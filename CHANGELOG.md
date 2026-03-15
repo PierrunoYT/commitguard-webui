@@ -9,20 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.0] - 2025-03-15
 
+### Added
+
+- OpenRouter integration for access to 100+ models (GPT-4, Claude, Gemini, etc.)
+- `--model` option to choose any OpenRouter model (e.g. `anthropic/claude-3.5-sonnet`, `google/gemini-pro`)
+
 ### Changed
 
-- Switched from OpenAI API to OpenRouter for multi-model support (GPT-4, Claude, Gemini, etc.)
-- Environment variable: `OPENROUTER_API_KEY` (replaces `OPENAI_API_KEY`)
+- **Breaking:** Switched from OpenAI API to OpenRouter
+- **Breaking:** Environment variable is now `OPENROUTER_API_KEY` (was `OPENAI_API_KEY`)
 - Default model: `openai/gpt-4o-mini`
+- PyPI package name: `commitguard-ai`
 
 ## [0.1.0] - 2025-03-15
 
 ### Added
 
+- Initial release
 - CLI with `commitguard` command
-- `analyze` command to analyze commits for bugs and issues
-- `check` command to analyze staged changes before commit
-- Support for analyzing single commit, multiple commits, or specific commit by hash
-- OpenAI integration (gpt-4o-mini by default)
-- Configurable model and API key via CLI or environment variable
-- Repository path option for analyzing repos outside current directory
+- `analyze` – analyze commits for bugs, security issues, and code quality
+- `check` – analyze staged changes before commit
+- Support for single commit, multiple commits (`-n`), or commit by hash
+- OpenAI integration
+- `--repo` option for analyzing repos outside current directory
