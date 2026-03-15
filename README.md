@@ -81,6 +81,18 @@ commitguard analyze --model google/gemini-pro
 
 See [OpenRouter models](https://openrouter.ai/models) for the full list.
 
+## Troubleshooting
+
+| Error | Solution |
+|-------|----------|
+| Invalid or missing API key | Set `OPENROUTER_API_KEY` or use `--api-key`. Get a key at [openrouter.ai/keys](https://openrouter.ai/keys) |
+| Insufficient credits | Add credits at [openrouter.ai/credits](https://openrouter.ai/credits) |
+| Model not found | Use the full model ID (e.g. `openai/gpt-4o-mini`). Check [openrouter.ai/models](https://openrouter.ai/models) |
+| Rate limit exceeded | Wait and retry, or switch to a different model |
+| Service unavailable | OpenRouter or model may be down; try again later |
+
+**Security:** Never commit your API key. Use environment variables or `--api-key` at runtime.
+
 ## Development
 
 ```bash
