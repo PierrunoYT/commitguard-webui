@@ -378,6 +378,31 @@ button:disabled {
     text-decoration: underline;
 }
 
+.diff-section {
+    margin-top: 1.5rem;
+}
+
+.diff-section__title {
+    margin: 0 0 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.diff-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 0.8rem;
+}
+
+.diff-container diffs-container {
+    display: block;
+}
+
 .error-box {
     background: rgba(239, 68, 68, 0.1);
     border: 1px solid var(--danger);

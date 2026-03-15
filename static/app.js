@@ -97,14 +97,60 @@ function renderMarkdown(text) {
     });
 }
 
+const diffSection = document.getElementById("diffSection");
+const diffContainer = document.getElementById("diffContainer");
+
+let diffInstances = [];
+
+async function renderDiff(diff) {
+    if (!diff || !diff.trim()) {
+        diffSection.hidden = true;
+        diffContainer.innerHTML = "";
+        return;
+    }
+    try {
+        const { parsePatchFiles, FileDiff } = await import("https://esm.sh/@pierre/diffs");
+        const files = parsePatchFiles(diff);
+        diffInstances.forEach((d) => d.cleanUp());
+        diffInstances = [];
+        diffContainer.innerHTML = "";
+        if (files.length === 0) {
+            diffSection.hidden = true;
+            return;
+        }
+        diffSection.hidden = false;
+        for (const file of files) {
+            const wrapper = document.createElement("div");
+            wrapper.className = "diff-file-wrapper";
+            diffContainer.appendChild(wrapper);
+            const fileDiff = new FileDiff({
+                theme: "dark-plus",
+                themeType: "dark",
+                diffStyle: "unified",
+            });
+            fileDiff.render({ fileDiff: file, fileContainer: wrapper });
+            diffInstances.push(fileDiff);
+        }
+    } catch (e) {
+        console.error("Failed to render diff:", e);
+        diffSection.hidden = true;
+        diffContainer.innerHTML = "";
+    }
+}
+
 function showError(msg) {
     error.textContent = msg;
     result.innerHTML = "";
+    diffSection.hidden = true;
+    diffContainer.innerHTML = "";
+    diffInstances.forEach((d) => d.cleanUp());
+    diffInstances = [];
 }
 
-function showResult(text) {
+function showResult(text, diff) {
     error.textContent = "";
     result.innerHTML = renderMarkdown(text);
+    renderDiff(diff || "");
 }
 
 function setLoading(loading) {
@@ -112,6 +158,10 @@ function setLoading(loading) {
     checkBtn.disabled = loading;
     if (loading) {
         result.textContent = "Analyzing...";
+        diffSection.hidden = true;
+        diffContainer.innerHTML = "";
+        diffInstances.forEach((d) => d.cleanUp());
+        diffInstances = [];
     }
 }
 
@@ -262,13 +312,13 @@ loadModelsBtn.addEventListener("click", async () => {
 analyzeBtn.addEventListener("click", async () => {
     setLoading(true);
     try {
-        const { result: text } = await post("/api/analyze", {
+        const data = await post("/api/analyze", {
             api_key: apiKey.value.trim() || undefined,
             repo_path: repoPath.value.trim() || ".",
             ref: ref.value.trim() || "HEAD",
             model: model.value,
         });
-        showResult(text);
+        showResult(data.result, data.diff);
     } catch (e) {
         showError(e.message);
     } finally {
@@ -279,12 +329,12 @@ analyzeBtn.addEventListener("click", async () => {
 checkBtn.addEventListener("click", async () => {
     setLoading(true);
     try {
-        const { result: text } = await post("/api/check", {
+        const data = await post("/api/check", {
             api_key: apiKey.value.trim() || undefined,
             repo_path: repoPath.value.trim() || ".",
             model: model.value,
         });
-        showResult(text);
+        showResult(data.result, data.diff);
     } catch (e) {
         showError(e.message);
     } finally {

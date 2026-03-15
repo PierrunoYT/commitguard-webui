@@ -76,8 +76,8 @@ def api_analyze():
 
     try:
         repo = get_repo_path(repo_path)
-        result = analyze_commit(str(repo), ref, api_key=api_key, model=model)
-        return jsonify({"result": result})
+        result, diff = analyze_commit(str(repo), ref, api_key=api_key, model=model)
+        return jsonify({"result": result, "diff": diff})
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
@@ -169,8 +169,8 @@ def api_check():
 
     try:
         repo = get_repo_path(repo_path)
-        result = analyze_staged(str(repo), api_key=api_key, model=model)
-        return jsonify({"result": result})
+        result, diff = analyze_staged(str(repo), api_key=api_key, model=model)
+        return jsonify({"result": result, "diff": diff})
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:

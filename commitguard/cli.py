@@ -74,7 +74,7 @@ def analyze(
     had_errors = False
     for ref in refs:
         try:
-            result = analyze_commit(str(repo), ref, api_key=key, model=model)
+            result, _ = analyze_commit(str(repo), ref, api_key=key, model=model)
             click.echo()
             click.secho(f"Commit: {ref}", fg="cyan", bold=True)
             click.echo(result)
@@ -122,7 +122,7 @@ def check(
 
     click.echo("Analyzing staged changes...")
     try:
-        result = analyze_staged(str(repo), api_key=key, model=model)
+        result, _ = analyze_staged(str(repo), api_key=key, model=model)
         click.echo(result)
     except Exception as e:
         raise click.ClickException(str(e))

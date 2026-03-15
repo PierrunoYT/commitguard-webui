@@ -57,8 +57,8 @@ def analyze_commit(
     *,
     api_key: str,
     model: str = "openai/gpt-4o-mini",
-) -> str:
-    """Analyze a specific commit."""
+) -> tuple[str, str]:
+    """Analyze a specific commit. Returns (analysis_result, diff)."""
     repo = Repo(repo_path)
     commit = repo.commit(ref)
     diff = _get_diff(repo, commit)
@@ -70,7 +70,8 @@ def analyze_commit(
         path = diff_item.b_path or diff_item.a_path
         if path:
             files.append(path)
-    return _call_ai(diff, commit.message, files, api_key, model)
+    result = _call_ai(diff, commit.message, files, api_key, model)
+    return (result, diff)
 
 
 def analyze_staged(
@@ -78,11 +79,12 @@ def analyze_staged(
     *,
     api_key: str,
     model: str = "openai/gpt-4o-mini",
-) -> str:
-    """Analyze staged changes."""
+) -> tuple[str, str]:
+    """Analyze staged changes. Returns (analysis_result, diff)."""
     repo = Repo(repo_path)
     diff = repo.git.diff("--cached")
     if not diff.strip():
-        return "No staged changes to analyze."
+        return ("No staged changes to analyze.", "")
     files = repo.git.diff("--cached", "--name-only").splitlines()
-    return _call_ai(diff, "(staged changes)", files, api_key, model)
+    result = _call_ai(diff, "(staged changes)", files, api_key, model)
+    return (result, diff)
