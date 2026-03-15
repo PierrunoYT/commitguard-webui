@@ -20,6 +20,8 @@ const clearCommitSelectionBtn = document.getElementById("clearCommitSelectionBtn
 const analyzeSelectedBtn = document.getElementById("analyzeSelectedBtn");
 const selectedCommitsInfo = document.getElementById("selectedCommitsInfo");
 const includeDiff = document.getElementById("includeDiff");
+const maxDiffChars = document.getElementById("maxDiffChars");
+const systemPrompt = document.getElementById("systemPrompt");
 const analyzeBtn = document.getElementById("analyzeBtn");
 const analyzeRangeBtn = document.getElementById("analyzeRangeBtn");
 const checkBtn = document.getElementById("checkBtn");
@@ -294,11 +296,21 @@ async function refreshKeyStatus() {
 }
 
 function buildRequestBody(extra = {}) {
+    const maxDiffRaw = maxDiffChars?.value?.trim() || "";
+    let maxDiff = undefined;
+    if (maxDiffRaw) {
+        const parsed = Number.parseInt(maxDiffRaw, 10);
+        if (Number.isFinite(parsed) && parsed > 0) {
+            maxDiff = parsed;
+        }
+    }
     return {
         api_key: apiKey.value.trim() || undefined,
         repo_path: repoPath.value.trim() || ".",
         model: model.value,
         include_diff: includeDiff?.checked !== false,
+        max_diff_chars: maxDiff,
+        system_prompt: systemPrompt?.value ?? undefined,
         ...extra,
     };
 }

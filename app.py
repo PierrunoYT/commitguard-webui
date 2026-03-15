@@ -10,6 +10,8 @@ from flask import Flask, jsonify, render_template, request
 
 from commitguard.analyzer import (
     AIAnalysisError,
+    DEFAULT_MAX_DIFF_CHARS,
+    DEFAULT_SYSTEM_PROMPT,
     DiffTooLargeError,
     GitAnalysisError,
     analyze_commit,
@@ -66,6 +68,32 @@ def _truncate_diff_for_ui(diff: str) -> tuple[str, bool]:
     )
     return truncated, True
 
+
+def _resolve_max_diff_chars(value: object) -> int | None:
+    """Parse optional max diff chars from request payload."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        raise ValueError("max_diff_chars must be a positive integer")
+    if parsed < 1:
+        raise ValueError("max_diff_chars must be a positive integer")
+    return parsed
+
+
+def _resolve_system_prompt(value: object) -> str | None:
+    """Parse optional system prompt override from request payload."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError("system_prompt must be a string")
+    return value
+
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
 
@@ -80,7 +108,11 @@ def get_repo_path(path: str | None) -> Path:
 @app.route("/")
 def index():
     """Serve the web UI."""
-    return render_template("index.html")
+    return render_template(
+        "index.html",
+        default_max_diff_chars=DEFAULT_MAX_DIFF_CHARS,
+        default_system_prompt=DEFAULT_SYSTEM_PROMPT,
+    )
 
 
 @app.route("/api/analyze", methods=["POST"])
@@ -91,13 +123,22 @@ def api_analyze():
     ref = data.get("ref", "HEAD")
     api_key = _resolve_api_key(data.get("api_key"))
     model = data.get("model", "openai/gpt-4o-mini")
+    max_diff_chars = _resolve_max_diff_chars(data.get("max_diff_chars"))
+    system_prompt = _resolve_system_prompt(data.get("system_prompt"))
 
     if not api_key:
         return jsonify({"error": "OpenRouter API key required"}), 400
 
     try:
         repo = get_repo_path(repo_path)
-        result, diff = analyze_commit(str(repo), ref, api_key=api_key, model=model)
+        result, diff = analyze_commit(
+            str(repo),
+            ref,
+            api_key=api_key,
+            model=model,
+            max_diff_chars=max_diff_chars,
+            system_prompt=system_prompt,
+        )
         if data.get("include_diff", True):
             diff = redact_diff(diff)
             diff, diff_truncated = _truncate_diff_for_ui(diff)
@@ -164,6 +205,8 @@ def api_analyze_range():
     api_key = _resolve_api_key(data.get("api_key"))
     model = data.get("model", "openai/gpt-4o-mini")
     max_commits = min(max(int(data.get("max_commits", 20)), 1), 50)
+    max_diff_chars = _resolve_max_diff_chars(data.get("max_diff_chars"))
+    system_prompt = _resolve_system_prompt(data.get("system_prompt"))
 
     if not api_key:
         return jsonify({"error": "OpenRouter API key required"}), 400
@@ -178,6 +221,8 @@ def api_analyze_range():
             api_key=api_key,
             model=model,
             max_commits=max_commits,
+            max_diff_chars=max_diff_chars,
+            system_prompt=system_prompt,
         )
         if data.get("include_diff", True):
             for item in analyses:
@@ -270,13 +315,21 @@ def api_check():
     repo_path = data.get("repo_path", ".")
     api_key = _resolve_api_key(data.get("api_key"))
     model = data.get("model", "openai/gpt-4o-mini")
+    max_diff_chars = _resolve_max_diff_chars(data.get("max_diff_chars"))
+    system_prompt = _resolve_system_prompt(data.get("system_prompt"))
 
     if not api_key:
         return jsonify({"error": "OpenRouter API key required"}), 400
 
     try:
         repo = get_repo_path(repo_path)
-        result, diff = analyze_staged(str(repo), api_key=api_key, model=model)
+        result, diff = analyze_staged(
+            str(repo),
+            api_key=api_key,
+            model=model,
+            max_diff_chars=max_diff_chars,
+            system_prompt=system_prompt,
+        )
         if data.get("include_diff", True):
             diff = redact_diff(diff)
             diff, diff_truncated = _truncate_diff_for_ui(diff)

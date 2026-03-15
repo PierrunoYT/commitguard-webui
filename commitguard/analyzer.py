@@ -11,6 +11,7 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_MAX_DIFF_CHARS = 50_000
 DEFAULT_WARN_DIFF_CHARS = 30_000
 DEFAULT_CHARS_PER_TOKEN = 4
+MAX_SYSTEM_PROMPT_CHARS = 20_000
 logger = logging.getLogger(__name__)
 
 
@@ -39,6 +40,7 @@ SYSTEM_PROMPT = """You are a code review assistant. Analyze Git commits for:
 
 Respond in markdown. Be concise. If nothing concerning is found, say "No issues detected."
 """
+DEFAULT_SYSTEM_PROMPT = SYSTEM_PROMPT
 
 
 def _env_int(name: str, default: int, *, min_value: int = 1) -> int:
@@ -62,20 +64,57 @@ WARN_DIFF_CHARS = min(
 CHARS_PER_TOKEN = _env_int("COMMITGUARD_CHARS_PER_TOKEN", DEFAULT_CHARS_PER_TOKEN)
 
 
-def _estimate_tokens(char_count: int) -> int:
+def _estimate_tokens(char_count: int, *, chars_per_token: int = CHARS_PER_TOKEN) -> int:
     """Rough token estimate to help users understand request size."""
-    return max(1, (char_count + CHARS_PER_TOKEN - 1) // CHARS_PER_TOKEN)
+    safe_chars_per_token = max(1, int(chars_per_token))
+    return max(1, (char_count + safe_chars_per_token - 1) // safe_chars_per_token)
 
 
-def _validate_diff_size(diff: str, *, context: str) -> None:
+def _resolve_max_diff_chars(value: int | str | None) -> int:
+    """Resolve request-specific max diff chars with fallback to server default."""
+    if value is None:
+        return MAX_DIFF_CHARS
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        raise DiffTooLargeError(
+            "Invalid max diff size. Use a positive integer for max diff characters."
+        ) from None
+    if parsed < 1:
+        raise DiffTooLargeError("Max diff size must be at least 1 character.")
+    return parsed
+
+
+def _resolve_system_prompt(prompt: str | None) -> str:
+    """Resolve request-specific system prompt with fallback to default."""
+    if prompt is None:
+        return DEFAULT_SYSTEM_PROMPT
+    normalized = prompt.strip()
+    if not normalized:
+        return DEFAULT_SYSTEM_PROMPT
+    if len(normalized) > MAX_SYSTEM_PROMPT_CHARS:
+        raise AIAnalysisError(
+            f"System prompt is too long ({len(normalized):,} chars). "
+            f"Max allowed is {MAX_SYSTEM_PROMPT_CHARS:,}."
+        )
+    return normalized
+
+
+def _validate_diff_size(
+    diff: str,
+    *,
+    context: str,
+    max_diff_chars: int | str | None = None,
+) -> None:
     """Validate diff size and raise with actionable guidance if too large."""
+    limit = _resolve_max_diff_chars(max_diff_chars)
     size = len(diff)
-    if size > MAX_DIFF_CHARS:
+    if size > limit:
         estimated = _estimate_tokens(size)
         raise DiffTooLargeError(
             f"Diff for {context} is too large to analyze safely "
             f"({size:,} chars, ~{estimated:,} tokens). "
-            f"Limit is COMMITGUARD_MAX_DIFF={MAX_DIFF_CHARS:,}. "
+            f"Limit is {limit:,} chars. "
             "Try a smaller commit/range or increase COMMITGUARD_MAX_DIFF deliberately."
         )
     if size > WARN_DIFF_CHARS:
@@ -98,8 +137,17 @@ def _get_diff(repo: Repo, commit) -> str:
     return diff
 
 
-def _call_ai(diff: str, message: str, files: list[str], api_key: str, model: str) -> str:
+def _call_ai(
+    diff: str,
+    message: str,
+    files: list[str],
+    api_key: str,
+    model: str,
+    *,
+    system_prompt: str | None = None,
+) -> str:
     """Call OpenRouter API for analysis (supports multiple models)."""
+    effective_system_prompt = _resolve_system_prompt(system_prompt)
     client = OpenAI(
         base_url=OPENROUTER_BASE_URL,
         api_key=api_key,
@@ -117,7 +165,7 @@ def _call_ai(diff: str, message: str, files: list[str], api_key: str, model: str
     response = client.chat.completions.create(
         model=model,
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": effective_system_prompt},
             {"role": "user", "content": user_content},
         ],
     )
@@ -137,12 +185,31 @@ def _collect_commit_files(commit) -> list[str]:
     return files
 
 
-def _analyze_commit_object(repo: Repo, commit, *, api_key: str, model: str) -> tuple[str, str]:
+def _analyze_commit_object(
+    repo: Repo,
+    commit,
+    *,
+    api_key: str,
+    model: str,
+    max_diff_chars: int | str | None = None,
+    system_prompt: str | None = None,
+) -> tuple[str, str]:
     """Analyze a commit object and return (result, diff)."""
     diff = _get_diff(repo, commit)
-    _validate_diff_size(diff, context=f"commit {commit.hexsha[:8]}")
+    _validate_diff_size(
+        diff,
+        context=f"commit {commit.hexsha[:8]}",
+        max_diff_chars=max_diff_chars,
+    )
     files = _collect_commit_files(commit)
-    result = _call_ai(diff, commit.message, files, api_key, model)
+    result = _call_ai(
+        diff,
+        commit.message,
+        files,
+        api_key,
+        model,
+        system_prompt=system_prompt,
+    )
     return (result, diff)
 
 
@@ -152,6 +219,8 @@ def analyze_commit(
     *,
     api_key: str,
     model: str = "openai/gpt-4o-mini",
+    max_diff_chars: int | str | None = None,
+    system_prompt: str | None = None,
 ) -> tuple[str, str]:
     """Analyze a specific commit. Returns (analysis_result, diff)."""
     try:
@@ -161,7 +230,14 @@ def analyze_commit(
         raise GitAnalysisError(f"Could not read commit '{ref}': {e}") from e
 
     try:
-        return _analyze_commit_object(repo, commit, api_key=api_key, model=model)
+        return _analyze_commit_object(
+            repo,
+            commit,
+            api_key=api_key,
+            model=model,
+            max_diff_chars=max_diff_chars,
+            system_prompt=system_prompt,
+        )
     except DiffTooLargeError:
         raise
     except Exception as e:
@@ -175,6 +251,8 @@ def analyze_commit_range(
     api_key: str,
     model: str = "openai/gpt-4o-mini",
     max_commits: int = 20,
+    max_diff_chars: int | str | None = None,
+    system_prompt: str | None = None,
 ) -> list[dict[str, str]]:
     """Analyze a commit range (e.g., HEAD~5..HEAD). Returns newest-first results."""
     try:
@@ -190,7 +268,14 @@ def analyze_commit_range(
     analyses = []
     for commit in commits:
         try:
-            result, diff = _analyze_commit_object(repo, commit, api_key=api_key, model=model)
+            result, diff = _analyze_commit_object(
+                repo,
+                commit,
+                api_key=api_key,
+                model=model,
+                max_diff_chars=max_diff_chars,
+                system_prompt=system_prompt,
+            )
             analyses.append(
                 {
                     "ref": commit.hexsha,
@@ -216,6 +301,8 @@ def analyze_staged(
     *,
     api_key: str,
     model: str = "openai/gpt-4o-mini",
+    max_diff_chars: int | str | None = None,
+    system_prompt: str | None = None,
 ) -> tuple[str, str]:
     """Analyze staged changes. Returns (analysis_result, diff)."""
     try:
@@ -223,7 +310,7 @@ def analyze_staged(
         diff = repo.git.diff("--cached")
         if not diff.strip():
             return ("No staged changes to analyze.", "")
-        _validate_diff_size(diff, context="staged changes")
+        _validate_diff_size(diff, context="staged changes", max_diff_chars=max_diff_chars)
 
         try:
             diff_obj = repo.index.diff("HEAD")
@@ -241,7 +328,14 @@ def analyze_staged(
         raise GitAnalysisError(f"Could not read staged changes: {e}") from e
 
     try:
-        result = _call_ai(diff, "(staged changes)", files, api_key, model)
+        result = _call_ai(
+            diff,
+            "(staged changes)",
+            files,
+            api_key,
+            model,
+            system_prompt=system_prompt,
+        )
         return (result, diff)
     except DiffTooLargeError:
         raise
