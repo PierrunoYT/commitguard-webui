@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Prevent crash when collecting changed file paths from commits that include adds/deletes/renames
+- `analyze -n <count>` now correctly uses the provided commit reference (e.g. `<commit>~0`, `<commit>~1`, ...)
+- `analyze` now exits with an error when one or more commit analyses fail (better CI/automation behavior)
+- Validate `--count` to require a value of at least `1`
+
 ## [0.2.2] - 2025-03-15
 
 ### Added

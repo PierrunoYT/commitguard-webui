@@ -67,8 +67,11 @@ def analyze(
         raise click.ClickException(
             "OpenRouter API key required. Set OPENROUTER_API_KEY or use --api-key."
         )
+    if count < 1:
+        raise click.ClickException("--count must be at least 1.")
 
-    refs = [commit] if count == 1 else [f"HEAD~{i}" for i in range(count)]
+    refs = [commit] if count == 1 else [f"{commit}~{i}" for i in range(count)]
+    had_errors = False
     for ref in refs:
         try:
             result = analyze_commit(str(repo), ref, api_key=key, model=model)
@@ -78,6 +81,9 @@ def analyze(
             click.echo()
         except Exception as e:
             click.echo(click.style(f"Error analyzing {ref}: {e}", fg="red"))
+            had_errors = True
+    if had_errors:
+        raise click.ClickException("One or more commits failed to analyze.")
 
 
 @main.command()

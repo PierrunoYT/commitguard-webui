@@ -62,7 +62,14 @@ def analyze_commit(
     repo = Repo(repo_path)
     commit = repo.commit(ref)
     diff = _get_diff(repo, commit)
-    files = [d.a_path for d in commit.diff(commit.parents[0] if commit.parents else None, create_patch=False)]
+    files = []
+    for diff_item in commit.diff(
+        commit.parents[0] if commit.parents else None,
+        create_patch=False,
+    ):
+        path = diff_item.b_path or diff_item.a_path
+        if path:
+            files.append(path)
     return _call_ai(diff, commit.message, files, api_key, model)
 
 
