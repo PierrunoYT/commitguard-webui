@@ -88,14 +88,23 @@ function populateModelSelect(models, preferredId) {
     setModelTooltip();
 }
 
+function renderMarkdown(text) {
+    if (!text || !text.trim()) return "";
+    const raw = marked.parse(text.trim(), { gfm: true, breaks: true });
+    return DOMPurify.sanitize(raw, {
+        ALLOWED_TAGS: ["p", "br", "strong", "em", "code", "pre", "ul", "ol", "li", "h1", "h2", "h3", "h4", "blockquote", "hr", "a"],
+        ALLOWED_ATTR: ["href", "target"]
+    });
+}
+
 function showError(msg) {
     error.textContent = msg;
-    result.textContent = "";
+    result.innerHTML = "";
 }
 
 function showResult(text) {
     error.textContent = "";
-    result.textContent = text;
+    result.innerHTML = renderMarkdown(text);
 }
 
 function setLoading(loading) {

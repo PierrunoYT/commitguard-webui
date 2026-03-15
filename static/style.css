@@ -293,7 +293,6 @@ button:disabled {
     padding: 1rem 1.25rem;
     border-radius: 8px;
     font-size: 0.85rem;
-    white-space: pre-wrap;
     word-break: break-word;
     min-height: 80px;
 }
@@ -301,6 +300,7 @@ button:disabled {
 .result-box {
     background: var(--surface);
     border: 1px solid var(--border);
+    line-height: 1.6;
 }
 
 .result-box:empty::before {
@@ -308,29 +308,87 @@ button:disabled {
     color: var(--muted);
 }
 
-.error-box {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid var(--danger);
-    color: #fca5a5;
-    margin-top: 0.75rem;
-    display: none;
+.result-box p {
+    margin: 0 0 0.75rem;
 }
 
-.error-box:not(:empty) {
-    display: block;
+.result-box p:last-child {
+    margin-bottom: 0;
 }
 
 .result-box h1,
 .result-box h2,
-.result-box h3 {
-    margin: 1rem 0 0.5rem;
+.result-box h3,
+.result-box h4 {
+    margin: 1.25rem 0 0.5rem;
     font-size: 1em;
+    font-weight: 600;
+}
+
+.result-box h1:first-child,
+.result-box h2:first-child,
+.result-box h3:first-child,
+.result-box h4:first-child {
+    margin-top: 0;
 }
 
 .result-box ul,
 .result-box ol {
     margin: 0.5rem 0;
     padding-left: 1.25rem;
+}
+
+.result-box li {
+    margin: 0.25rem 0;
+}
+
+.result-box pre {
+    margin: 0.75rem 0;
+    padding: 1rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.8em;
+}
+
+.result-box pre code {
+    background: none;
+    padding: 0;
+}
+
+.result-box blockquote {
+    margin: 0.75rem 0;
+    padding-left: 1rem;
+    border-left: 3px solid var(--accent);
+    color: var(--muted);
+}
+
+.result-box hr {
+    margin: 1rem 0;
+    border: none;
+    border-top: 1px solid var(--border);
+}
+
+.result-box a {
+    color: var(--accent);
+}
+
+.result-box a:hover {
+    text-decoration: underline;
+}
+
+.error-box {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--danger);
+    color: #fca5a5;
+    margin-top: 0.75rem;
+    white-space: pre-wrap;
+    display: none;
+}
+
+.error-box:not(:empty) {
+    display: block;
 }
 
 @media (max-width: 600px) {
