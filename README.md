@@ -5,6 +5,9 @@ AI-powered web interface that analyzes Git commits for bugs, security issues, an
 ## Features
 
 - **Analyze commits** – Detect bugs, security issues, and code quality problems
+- **Analyze commit ranges** – Review a revision range like `HEAD~5..HEAD`
+- **Analyze multiple refs** – Enter comma/newline-separated refs and analyze each
+- **Tabbed results UI** – Each commit result opens in its own tab/panel
 - **Pre-commit check** – Review staged changes before committing
 - **Multi-model** – Use any model on OpenRouter (GPT-4, Claude, Gemini, etc.)
 - **Web UI** – Browser-based interface with Python backend
@@ -55,9 +58,43 @@ python app.py
 
 Then open http://127.0.0.1:5000 in your browser.
 
-- **Analyze Commit** – Enter a commit ref (e.g. `HEAD`, `abc123`) and click Analyze
+- **Analyze Commit** – Supports:
+  - single ref: `HEAD`, `abc123`
+  - range in same input: `HEAD~5..HEAD`
+  - multiple refs: `abc123,def456` (comma or newline separated)
+- **Analyze Range** – Use dedicated range input/button for range-only workflow
 - **Check Staged** – Analyze staged changes before committing
 - Set your OpenRouter API key (or save it for reuse) and repository path in the form
+- Multi-commit analyses render one tab per commit result to avoid crowded output
+
+## API Endpoints
+
+- `POST /api/analyze`  
+  Analyze one commit ref. Returns:
+  - `result` (markdown analysis)
+  - `diff` (possibly redacted/truncated)
+  - `diff_truncated` (boolean)
+
+- `POST /api/analyze-range`  
+  Analyze a commit range. Request includes `range` and optional `max_commits`. Returns:
+  - `results[]` with `ref`, `short_ref`, `title`, `result`, `diff`, `diff_truncated`
+  - `count`
+
+- `POST /api/check`  
+  Analyze staged changes. Returns `result`, `diff`, `diff_truncated`.
+
+- `POST /api/models`  
+  Loads available OpenRouter models for the model picker.
+
+- `GET|POST|DELETE /api/settings/key`  
+  Check key status, save key, or clear saved key.
+
+## Limits and behavior notes
+
+- Range analysis defaults to `max_commits=20`; server clamps `max_commits` to `1..50`.
+- AI analysis input diff is truncated to 12,000 chars (`AI_DIFF_CHAR_LIMIT`).
+- UI diff payload is truncated to 150,000 chars (`UI_DIFF_CHAR_LIMIT`) and flagged by `diff_truncated`.
+- API key resolution order: request key -> saved key -> `OPENROUTER_API_KEY`.
 
 ### Model examples
 
