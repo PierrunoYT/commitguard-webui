@@ -27,21 +27,25 @@ body {
     min-height: 100vh;
 }
 
-.container {
-    max-width: 720px;
+.app-shell {
+    max-width: 1600px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: 1.5rem 2rem 2rem;
 }
 
-header {
-    margin-bottom: 2.5rem;
+.app-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
     border-bottom: 1px solid var(--border);
-    padding-bottom: 1.5rem;
+    padding-bottom: 1rem;
 }
 
-header h1 {
+.app-header h1 {
     margin: 0;
-    font-size: 1.75rem;
+    font-size: 1.9rem;
     font-weight: 600;
     letter-spacing: -0.02em;
 }
@@ -49,11 +53,48 @@ header h1 {
 .tagline {
     margin: 0.25rem 0 0;
     color: var(--muted);
-    font-size: 0.9rem;
+    font-size: 0.88rem;
 }
 
-section {
-    margin-bottom: 2rem;
+.header-hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.8rem;
+}
+
+.app-layout {
+    display: grid;
+    grid-template-columns: minmax(360px, 460px) minmax(700px, 1fr);
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.control-column {
+    display: grid;
+    gap: 1rem;
+    align-content: start;
+}
+
+.panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+}
+
+.panel h3 {
+    margin: 0 0 0.75rem;
+}
+
+.output {
+    min-height: calc(100vh - 180px);
+}
+
+.output-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
 }
 
 section h3 {
@@ -257,13 +298,13 @@ button.secondary:hover {
 
 .actions {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
+    grid-template-columns: 1fr;
+    gap: 1rem;
 }
 
 .action-group {
-    padding: 1.25rem;
-    background: var(--surface);
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--border);
     border-radius: 8px;
 }
@@ -601,8 +642,53 @@ button:disabled {
     display: block;
 }
 
-@media (max-width: 600px) {
-    .actions {
+@media (max-width: 1280px) {
+    .app-shell {
+        max-width: 100%;
+        padding: 1.25rem 1.25rem 1.5rem;
+    }
+
+    .app-layout {
+        grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 980px) {
+    .app-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .app-layout {
         grid-template-columns: 1fr;
+    }
+
+    .output {
+        min-height: 0;
+    }
+
+    .output-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.35rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .app-shell {
+        padding: 1rem;
+    }
+
+    .model-row,
+    .commit-search-row {
+        flex-direction: column;
+    }
+
+    .button-row {
+        flex-direction: column;
+    }
+
+    button {
+        width: 100%;
     }
 }

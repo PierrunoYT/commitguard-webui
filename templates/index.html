@@ -7,94 +7,106 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>CommitGuard</h1>
-            <p class="tagline">AI-powered Git commit analysis</p>
+    <div class="app-shell">
+        <header class="app-header">
+            <div>
+                <h1>CommitGuard</h1>
+                <p class="tagline">AI-powered Git commit analysis</p>
+            </div>
+            <p class="header-hint">Select commits on the left, review results on the right.</p>
         </header>
 
-        <main>
-            <section class="config">
-                <div class="field">
-                    <label for="apiKey">OpenRouter API Key</label>
-                    <div class="key-row">
-                        <input type="password" id="apiKey" placeholder="sk-or-...">
-                        <span id="keyStatus" class="key-status"></span>
-                        <button type="button" id="saveKeyBtn" class="secondary">Save</button>
-                        <button type="button" id="clearKeyBtn" class="secondary">Clear saved</button>
-                    </div>
-                    <p class="hint">Leave empty to use saved key. Stored in your user config directory.</p>
-                </div>
-                <div class="field">
-                    <label for="repoPath">Repository Path</label>
-                    <input type="text" id="repoPath" placeholder="." value=".">
-                </div>
-                <div class="field">
-                    <label for="model">Model</label>
-                    <div class="model-row">
-                        <div class="custom-dropdown" id="modelDropdown">
-                            <button type="button" class="custom-dropdown__trigger" id="modelTrigger" aria-haspopup="listbox" aria-expanded="false">
-                                <span class="custom-dropdown__value" id="modelDisplay">GPT-4o Mini (default)</span>
-                                <span class="custom-dropdown__arrow" aria-hidden="true">▼</span>
-                            </button>
-                            <input type="hidden" id="model" value="openai/gpt-4o-mini">
-                            <div class="custom-dropdown__panel" id="modelPanel" role="listbox" aria-labelledby="modelTrigger" hidden>
-                                <div class="custom-dropdown__option selected" data-value="openai/gpt-4o-mini" role="option" tabindex="-1">GPT-4o Mini (default)</div>
-                            </div>
+        <main class="app-layout">
+            <aside class="control-column">
+                <section class="panel config">
+                    <h3>Configuration</h3>
+                    <div class="field">
+                        <label for="apiKey">OpenRouter API Key</label>
+                        <div class="key-row">
+                            <input type="password" id="apiKey" placeholder="sk-or-...">
+                            <span id="keyStatus" class="key-status"></span>
+                            <button type="button" id="saveKeyBtn" class="secondary">Save</button>
+                            <button type="button" id="clearKeyBtn" class="secondary">Clear saved</button>
                         </div>
-                        <button type="button" id="loadModelsBtn" class="secondary">Load models</button>
+                        <p class="hint">Leave empty to use saved key. Stored in your user config directory.</p>
                     </div>
-                </div>
-                <div class="field">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="includeDiff" checked>
-                        Include diff in response
-                    </label>
-                    <p class="hint">Uncheck to avoid sending diff to browser (sensitive repos). Diff is always redacted when included.</p>
-                </div>
-            </section>
+                    <div class="field">
+                        <label for="repoPath">Repository Path</label>
+                        <input type="text" id="repoPath" placeholder="." value=".">
+                    </div>
+                    <div class="field">
+                        <label for="model">Model</label>
+                        <div class="model-row">
+                            <div class="custom-dropdown" id="modelDropdown">
+                                <button type="button" class="custom-dropdown__trigger" id="modelTrigger" aria-haspopup="listbox" aria-expanded="false">
+                                    <span class="custom-dropdown__value" id="modelDisplay">GPT-4o Mini (default)</span>
+                                    <span class="custom-dropdown__arrow" aria-hidden="true">▼</span>
+                                </button>
+                                <input type="hidden" id="model" value="openai/gpt-4o-mini">
+                                <div class="custom-dropdown__panel" id="modelPanel" role="listbox" aria-labelledby="modelTrigger" hidden>
+                                    <div class="custom-dropdown__option selected" data-value="openai/gpt-4o-mini" role="option" tabindex="-1">GPT-4o Mini (default)</div>
+                                </div>
+                            </div>
+                            <button type="button" id="loadModelsBtn" class="secondary">Load models</button>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="includeDiff" checked>
+                            Include diff in response
+                        </label>
+                        <p class="hint">Uncheck to avoid sending diff to browser (sensitive repos). Diff is always redacted when included.</p>
+                    </div>
+                </section>
 
-            <section class="actions">
-                <div class="action-group">
-                    <h3>Analyze Commit</h3>
-                    <div class="field">
-                        <label for="ref">Commit Ref</label>
-                        <input type="text" id="ref" placeholder="HEAD" value="HEAD">
-                        <p class="hint">Use <code>HEAD</code>, <code>HEAD~5</code>, a hash, a range like <code>HEAD~5..HEAD</code>, or multiple refs like <code>abc123,def456</code>. Multi-commit results open in separate tabs.</p>
-                    </div>
-                    <div class="field">
-                        <label for="rangeRef">Commit Range</label>
-                        <input type="text" id="rangeRef" placeholder="HEAD~5..HEAD">
-                        <p class="hint">Analyze a range directly (each commit appears in its own result tab).</p>
-                    </div>
-                    <div class="button-row">
-                        <button id="analyzeBtn">Analyze commit</button>
-                        <button id="analyzeRangeBtn" class="secondary">Analyze range</button>
-                    </div>
-                    <div class="field commit-picker">
-                        <label for="commitSearch">Recent Commits</label>
-                        <div class="commit-search-row">
-                            <input type="text" id="commitSearch" placeholder="Search by message, hash, or author">
-                            <button type="button" id="loadCommitsBtn" class="secondary">Refresh</button>
+                <section class="panel actions">
+                    <div class="action-group">
+                        <h3>Analyze Commit</h3>
+                        <div class="field">
+                            <label for="ref">Commit Ref</label>
+                            <input type="text" id="ref" placeholder="HEAD" value="HEAD">
+                            <p class="hint">Use <code>HEAD</code>, <code>HEAD~5</code>, a hash, a range like <code>HEAD~5..HEAD</code>, or multiple refs like <code>abc123,def456</code>. Multi-commit results open in separate tabs.</p>
+                        </div>
+                        <div class="field">
+                            <label for="rangeRef">Commit Range</label>
+                            <input type="text" id="rangeRef" placeholder="HEAD~5..HEAD">
+                            <p class="hint">Analyze a range directly (each commit appears in its own result tab).</p>
                         </div>
                         <div class="button-row">
-                            <button type="button" id="selectAllCommitsBtn" class="secondary">Select all shown</button>
-                            <button type="button" id="clearCommitSelectionBtn" class="secondary">Clear selection</button>
-                            <button type="button" id="analyzeSelectedBtn">Analyze selected</button>
+                            <button id="analyzeBtn">Analyze commit</button>
+                            <button id="analyzeRangeBtn" class="secondary">Analyze range</button>
                         </div>
-                        <p class="hint" id="selectedCommitsInfo">No commits selected.</p>
-                        <div id="commitList" class="commit-list" role="listbox" aria-label="Commit picker"></div>
                     </div>
-                </div>
-                <div class="action-group">
-                    <h3>Pre-commit Check</h3>
-                    <p class="hint">Analyze staged changes before committing</p>
-                    <button id="checkBtn">Check Staged</button>
-                </div>
-            </section>
+                    <div class="action-group">
+                        <h3>Commit Browser</h3>
+                        <div class="field commit-picker">
+                            <label for="commitSearch">Recent Commits</label>
+                            <div class="commit-search-row">
+                                <input type="text" id="commitSearch" placeholder="Search by message, hash, or author">
+                                <button type="button" id="loadCommitsBtn" class="secondary">Refresh</button>
+                            </div>
+                            <div class="button-row">
+                                <button type="button" id="selectAllCommitsBtn" class="secondary">Select all shown</button>
+                                <button type="button" id="clearCommitSelectionBtn" class="secondary">Clear selection</button>
+                                <button type="button" id="analyzeSelectedBtn">Analyze selected</button>
+                            </div>
+                            <p class="hint" id="selectedCommitsInfo">No commits selected.</p>
+                            <div id="commitList" class="commit-list" role="listbox" aria-label="Commit picker"></div>
+                        </div>
+                    </div>
+                    <div class="action-group">
+                        <h3>Pre-commit Check</h3>
+                        <p class="hint">Analyze staged changes before committing</p>
+                        <button id="checkBtn">Check Staged</button>
+                    </div>
+                </section>
+            </aside>
 
-            <section class="output">
-                <h3>Results</h3>
+            <section class="panel output">
+                <div class="output-header">
+                    <h3>Results Workspace</h3>
+                    <p class="hint">Each analyzed commit appears in its own tab.</p>
+                </div>
                 <div id="resultTabs" class="result-tabs" hidden></div>
                 <div id="resultPanels" class="result-panels"></div>
                 <div id="error" class="error-box"></div>
