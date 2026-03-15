@@ -32,9 +32,16 @@
                 <div class="field">
                     <label for="model">Model</label>
                     <div class="model-row">
-                        <select id="model">
-                            <option value="openai/gpt-4o-mini">GPT-4o Mini (default)</option>
-                        </select>
+                        <div class="custom-dropdown" id="modelDropdown">
+                            <button type="button" class="custom-dropdown__trigger" id="modelTrigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="custom-dropdown__value" id="modelDisplay">GPT-4o Mini (default)</span>
+                                <span class="custom-dropdown__arrow" aria-hidden="true">▼</span>
+                            </button>
+                            <input type="hidden" id="model" value="openai/gpt-4o-mini">
+                            <div class="custom-dropdown__panel" id="modelPanel" role="listbox" aria-labelledby="modelTrigger" hidden>
+                                <div class="custom-dropdown__option selected" data-value="openai/gpt-4o-mini" role="option" tabindex="-1">GPT-4o Mini (default)</div>
+                            </div>
+                        </div>
                         <button type="button" id="loadModelsBtn" class="secondary">Load models</button>
                     </div>
                 </div>
