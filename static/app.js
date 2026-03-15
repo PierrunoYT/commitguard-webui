@@ -102,6 +102,20 @@ const diffContainer = document.getElementById("diffContainer");
 
 let diffInstances = [];
 
+function ensureFilename(obj, fallback) {
+    if (obj && (obj.filename == null || obj.filename === "" || obj.filename === "/dev/null")) {
+        obj.filename = fallback || "file.txt";
+    }
+}
+
+const EXT_TO_LANG = { py: "python", js: "javascript", ts: "typescript", jsx: "jsx", tsx: "tsx", html: "html", css: "css", json: "json", md: "markdown", yml: "yaml", yaml: "yaml", sh: "shell", rb: "ruby", go: "go", rs: "rust", java: "java", kt: "kotlin", c: "c", cpp: "cpp", h: "c", hpp: "cpp", php: "php", sql: "sql" };
+
+function langFromFilename(filename) {
+    if (!filename || typeof filename !== "string") return "text";
+    const ext = filename.split(".").pop()?.toLowerCase();
+    return EXT_TO_LANG[ext] || "text";
+}
+
 async function renderDiff(diff) {
     if (!diff || !diff.trim()) {
         diffSection.hidden = true;
@@ -109,7 +123,7 @@ async function renderDiff(diff) {
         return;
     }
     try {
-        const { parsePatchFiles, FileDiff } = await import("https://esm.sh/@pierre/diffs");
+        const { parsePatchFiles, FileDiff, setLanguageOverride } = await import("https://esm.sh/@pierre/diffs");
         const files = parsePatchFiles(diff);
         diffInstances.forEach((d) => d.cleanUp());
         diffInstances = [];
@@ -120,16 +134,26 @@ async function renderDiff(diff) {
         }
         diffSection.hidden = false;
         for (const file of files) {
+            const fallback = file.additionFile?.filename ?? file.deletionFile?.filename ?? file.oldFile?.filename ?? file.newFile?.filename ?? "file.txt";
+            ensureFilename(file.oldFile, fallback);
+            ensureFilename(file.newFile, fallback);
+            ensureFilename(file.additionFile, fallback);
+            ensureFilename(file.deletionFile, fallback);
+            setLanguageOverride(file, langFromFilename(fallback));
             const wrapper = document.createElement("div");
             wrapper.className = "diff-file-wrapper";
             diffContainer.appendChild(wrapper);
-            const fileDiff = new FileDiff({
-                theme: "dark-plus",
-                themeType: "dark",
-                diffStyle: "unified",
-            });
-            fileDiff.render({ fileDiff: file, fileContainer: wrapper });
-            diffInstances.push(fileDiff);
+            try {
+                const fileDiff = new FileDiff({
+                    theme: "dark-plus",
+                    themeType: "dark",
+                    diffStyle: "unified",
+                });
+                fileDiff.render({ fileDiff: file, fileContainer: wrapper });
+                diffInstances.push(fileDiff);
+            } catch (fileErr) {
+                console.warn("Skipping file in diff:", fileErr);
+            }
         }
     } catch (e) {
         console.error("Failed to render diff:", e);
