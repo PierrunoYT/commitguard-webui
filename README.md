@@ -83,4 +83,8 @@ python -m commitguard.cli analyze
 
 ## License
 
-MIT
+[MIT](LICENSE)
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
