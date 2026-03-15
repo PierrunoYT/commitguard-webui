@@ -92,6 +92,26 @@ input:focus, select:focus {
     border-color: var(--accent);
 }
 
+.model-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.model-row select {
+    flex: 1;
+}
+
+button.secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+button.secondary:hover {
+    background: var(--border);
+}
+
 .actions {
     display: grid;
     grid-template-columns: 1fr 1fr;

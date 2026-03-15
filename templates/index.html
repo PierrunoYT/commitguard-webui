@@ -25,12 +25,12 @@
                 </div>
                 <div class="field">
                     <label for="model">Model</label>
-                    <select id="model">
-                        <option value="openai/gpt-4o-mini">GPT-4o Mini (fast)</option>
-                        <option value="openai/gpt-4o">GPT-4o</option>
-                        <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
-                        <option value="google/gemini-pro">Gemini Pro</option>
-                    </select>
+                    <div class="model-row">
+                        <select id="model">
+                            <option value="openai/gpt-4o-mini">GPT-4o Mini (default)</option>
+                        </select>
+                        <button type="button" id="loadModelsBtn" class="secondary">Load models</button>
+                    </div>
                 </div>
             </section>
 

@@ -1,6 +1,7 @@
 const apiKey = document.getElementById("apiKey");
 const repoPath = document.getElementById("repoPath");
 const model = document.getElementById("model");
+const loadModelsBtn = document.getElementById("loadModelsBtn");
 const ref = document.getElementById("ref");
 const analyzeBtn = document.getElementById("analyzeBtn");
 const checkBtn = document.getElementById("checkBtn");
@@ -37,6 +38,35 @@ async function post(endpoint, body) {
     }
     return data;
 }
+
+loadModelsBtn.addEventListener("click", async () => {
+    const key = apiKey.value.trim();
+    if (!key) {
+        showError("Please enter your OpenRouter API key first.");
+        return;
+    }
+    loadModelsBtn.disabled = true;
+    loadModelsBtn.textContent = "Loading...";
+    try {
+        const { models } = await post("/api/models", { api_key: key });
+        const current = model.value;
+        model.innerHTML = "";
+        for (const m of models) {
+            const opt = document.createElement("option");
+            opt.value = m.id;
+            opt.textContent = m.name || m.id;
+            if (m.id === current) opt.selected = true;
+            model.appendChild(opt);
+        }
+        if (!model.value && models.length) model.selectedIndex = 0;
+        showResult("");
+    } catch (e) {
+        showError(e.message);
+    } finally {
+        loadModelsBtn.disabled = false;
+        loadModelsBtn.textContent = "Load models";
+    }
+});
 
 analyzeBtn.addEventListener("click", async () => {
     const key = apiKey.value.trim();
