@@ -5,7 +5,6 @@ from git.exc import GitCommandError
 from openai import OpenAI
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-AI_DIFF_CHAR_LIMIT = 12000
 
 
 class AnalysisError(Exception):
@@ -36,7 +35,7 @@ def _get_diff(repo: Repo, commit) -> str:
         diff = repo.git.diff(commit.parents[0], commit)
     else:
         diff = repo.git.show(commit, format="", no_patch=False)
-    return diff[:AI_DIFF_CHAR_LIMIT]  # Limit context size
+    return diff
 
 
 def _call_ai(diff: str, message: str, files: list[str], api_key: str, model: str) -> str:
@@ -174,7 +173,7 @@ def analyze_staged(
         raise GitAnalysisError(f"Could not read staged changes: {e}") from e
 
     try:
-        result = _call_ai(diff[:AI_DIFF_CHAR_LIMIT], "(staged changes)", files, api_key, model)
+        result = _call_ai(diff, "(staged changes)", files, api_key, model)
         return (result, diff)
     except Exception as e:
         raise AIAnalysisError(f"AI analysis failed: {e}") from e
