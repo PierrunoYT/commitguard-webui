@@ -178,3 +178,62 @@ def analyze_staged(
         return (result, diff)
     except Exception as e:
         raise AIAnalysisError(f"AI analysis failed: {e}") from e
+
+
+def list_commits(
+    repo_path: str,
+    *,
+    search: str = "",
+    limit: int = 80,
+) -> list[dict[str, str]]:
+    """
+    List recent commits from HEAD for commit picker UI.
+    If search is provided, scan more history and return up to `limit` matches.
+    """
+    try:
+        repo = Repo(repo_path)
+    except Exception as e:
+        raise GitAnalysisError(f"Could not open repository '{repo_path}': {e}") from e
+
+    safe_limit = max(1, limit)
+    term = search.strip().lower()
+    commits: list[dict[str, str]] = []
+
+    if not term:
+        iterable = repo.iter_commits("HEAD", max_count=safe_limit)
+        scan_limit = safe_limit
+    else:
+        iterable = repo.iter_commits("HEAD")
+        scan_limit = max(200, safe_limit * 20)
+
+    for idx, commit in enumerate(iterable):
+        if idx >= scan_limit:
+            break
+
+        title = commit.summary or commit.hexsha[:8]
+        author = (commit.author.name or "").strip() or "Unknown author"
+        message = (commit.message or "").strip()
+
+        if term:
+            haystack = f"{commit.hexsha}\n{title}\n{author}\n{message}".lower()
+            if term not in haystack:
+                continue
+
+        committed_at = ""
+        if commit.committed_datetime:
+            committed_at = commit.committed_datetime.isoformat()
+
+        commits.append(
+            {
+                "ref": commit.hexsha,
+                "short_ref": commit.hexsha[:8],
+                "title": title,
+                "author": author,
+                "date": committed_at,
+            }
+        )
+
+        if len(commits) >= safe_limit:
+            break
+
+    return commits

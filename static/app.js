@@ -12,6 +12,13 @@ const modelDropdown = document.getElementById("modelDropdown");
 const loadModelsBtn = document.getElementById("loadModelsBtn");
 const ref = document.getElementById("ref");
 const rangeRef = document.getElementById("rangeRef");
+const commitSearch = document.getElementById("commitSearch");
+const commitList = document.getElementById("commitList");
+const loadCommitsBtn = document.getElementById("loadCommitsBtn");
+const selectAllCommitsBtn = document.getElementById("selectAllCommitsBtn");
+const clearCommitSelectionBtn = document.getElementById("clearCommitSelectionBtn");
+const analyzeSelectedBtn = document.getElementById("analyzeSelectedBtn");
+const selectedCommitsInfo = document.getElementById("selectedCommitsInfo");
 const includeDiff = document.getElementById("includeDiff");
 const analyzeBtn = document.getElementById("analyzeBtn");
 const analyzeRangeBtn = document.getElementById("analyzeRangeBtn");
@@ -22,6 +29,7 @@ const error = document.getElementById("error");
 
 let diffInstances = [];
 let nextResultId = 1;
+let commitSearchTimer = null;
 
 // Utilities
 function getModelDisplayName(modelInfo) {
@@ -308,6 +316,9 @@ function setLoading(loading, message = "Analyzing...") {
     analyzeBtn.disabled = loading;
     analyzeRangeBtn.disabled = loading;
     checkBtn.disabled = loading;
+    if (analyzeSelectedBtn) {
+        analyzeSelectedBtn.disabled = loading || getSelectedCommitRefs().length === 0;
+    }
     if (loading) {
         error.textContent = "";
         clearResults();
@@ -370,6 +381,99 @@ function buildRequestBody(extra = {}) {
 function normalizeTabLabel(label, maxLen = 48) {
     if (!label) return "Result";
     return label.length <= maxLen ? label : `${label.slice(0, maxLen - 1)}...`;
+}
+
+function getSelectedCommitRefs() {
+    if (!commitList) return [];
+    return [...commitList.querySelectorAll('input[type="checkbox"][data-ref]:checked')]
+        .map((box) => box.getAttribute("data-ref"))
+        .filter(Boolean);
+}
+
+function updateCommitSelectionUi() {
+    if (!selectedCommitsInfo) return;
+    const count = getSelectedCommitRefs().length;
+    selectedCommitsInfo.textContent = count
+        ? `${count} commit${count === 1 ? "" : "s"} selected.`
+        : "No commits selected.";
+    if (analyzeSelectedBtn) analyzeSelectedBtn.disabled = count === 0;
+}
+
+function formatCommitDate(dateIso) {
+    if (!dateIso) return "";
+    const d = new Date(dateIso);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleString();
+}
+
+function renderCommitList(commits) {
+    if (!commitList) return;
+    commitList.innerHTML = "";
+    if (!commits || !commits.length) {
+        const empty = document.createElement("div");
+        empty.className = "commit-list-empty";
+        empty.textContent = "No commits match your search.";
+        commitList.appendChild(empty);
+        updateCommitSelectionUi();
+        return;
+    }
+
+    for (const item of commits) {
+        const label = document.createElement("label");
+        label.className = "commit-item";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.setAttribute("data-ref", item.ref || "");
+        checkbox.addEventListener("change", updateCommitSelectionUi);
+        label.appendChild(checkbox);
+
+        const text = document.createElement("div");
+        text.className = "commit-item__text";
+
+        const main = document.createElement("div");
+        main.className = "commit-item__main";
+        const hash = item.short_ref || (item.ref || "").slice(0, 8) || "commit";
+        const title = item.title || "No title";
+        const hashNode = document.createElement("span");
+        hashNode.className = "commit-item__hash";
+        hashNode.textContent = hash;
+        main.appendChild(hashNode);
+        main.appendChild(document.createTextNode(` ${title}`));
+        text.appendChild(main);
+
+        const meta = document.createElement("div");
+        meta.className = "commit-item__meta";
+        const dateText = formatCommitDate(item.date);
+        meta.textContent = [item.author || "Unknown author", dateText].filter(Boolean).join(" - ");
+        text.appendChild(meta);
+
+        label.appendChild(text);
+        commitList.appendChild(label);
+    }
+    updateCommitSelectionUi();
+}
+
+async function loadCommits(searchText = commitSearch?.value?.trim() || "") {
+    if (!loadCommitsBtn || !commitList) return;
+    loadCommitsBtn.disabled = true;
+    const previousLabel = loadCommitsBtn.textContent;
+    loadCommitsBtn.textContent = "Loading...";
+    commitList.innerHTML = '<div class="commit-list-empty">Loading commits...</div>';
+    try {
+        const data = await post("/api/commits", {
+            repo_path: repoPath.value.trim() || ".",
+            search: searchText || undefined,
+            limit: 120,
+        });
+        renderCommitList(data.commits || []);
+        error.textContent = "";
+    } catch (e) {
+        commitList.innerHTML = `<div class="commit-list-empty">${e.message}</div>`;
+    } finally {
+        loadCommitsBtn.disabled = false;
+        loadCommitsBtn.textContent = previousLabel;
+    }
 }
 
 function isCommitRange(input) {
@@ -451,6 +555,8 @@ clearKeyBtn.addEventListener("click", async () => {
 
 refreshKeyStatus();
 setModelTooltip();
+updateCommitSelectionUi();
+loadCommits();
 
 // Model Dropdown Events
 modelTrigger.addEventListener("click", (e) => {
@@ -496,6 +602,63 @@ modelPanel.addEventListener("click", (e) => e.stopPropagation());
 
 document.addEventListener("click", () => {
     if (modelDropdown.classList.contains("open")) closeModelDropdown();
+});
+
+loadCommitsBtn && loadCommitsBtn.addEventListener("click", () => {
+    loadCommits();
+});
+
+commitSearch && commitSearch.addEventListener("input", () => {
+    if (commitSearchTimer) {
+        clearTimeout(commitSearchTimer);
+    }
+    commitSearchTimer = setTimeout(() => {
+        loadCommits(commitSearch.value.trim());
+    }, 250);
+});
+
+commitSearch && commitSearch.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        loadCommits(commitSearch.value.trim());
+    }
+});
+
+repoPath.addEventListener("change", () => {
+    loadCommits(commitSearch?.value?.trim() || "");
+});
+
+selectAllCommitsBtn && selectAllCommitsBtn.addEventListener("click", () => {
+    if (!commitList) return;
+    commitList.querySelectorAll('input[type="checkbox"][data-ref]').forEach((box) => {
+        box.checked = true;
+    });
+    updateCommitSelectionUi();
+});
+
+clearCommitSelectionBtn && clearCommitSelectionBtn.addEventListener("click", () => {
+    if (!commitList) return;
+    commitList.querySelectorAll('input[type="checkbox"][data-ref]').forEach((box) => {
+        box.checked = false;
+    });
+    updateCommitSelectionUi();
+});
+
+analyzeSelectedBtn && analyzeSelectedBtn.addEventListener("click", async () => {
+    const refs = getSelectedCommitRefs();
+    if (!refs.length) {
+        showError("Select one or more commits first.");
+        return;
+    }
+    ref.value = refs.join(",");
+    setLoading(true, `Analyzing ${refs.length} selected commit${refs.length === 1 ? "" : "s"}...`);
+    try {
+        await analyzeRefList(refs);
+    } catch (e) {
+        showError(e.message);
+    } finally {
+        setLoading(false);
+    }
 });
 
 // Load Models Button

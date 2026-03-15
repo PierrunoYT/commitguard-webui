@@ -13,6 +13,7 @@ from commitguard.analyzer import (
     GitAnalysisError,
     analyze_commit,
     analyze_commit_range,
+    list_commits,
     analyze_staged,
 )
 from config_store import clear_api_key, has_saved_key, load_api_key, save_api_key
@@ -195,6 +196,30 @@ def api_analyze_range():
         return jsonify({"error": err}), 502
     except Exception as e:
         err = str(e) if app.debug else "Analysis failed"
+        return jsonify({"error": err}), 400
+
+
+@app.route("/api/commits", methods=["POST"])
+def api_commits():
+    """List recent commits for UI picker and search."""
+    data = request.get_json() or {}
+    repo_path = data.get("repo_path", ".")
+    search = (data.get("search") or "").strip()
+    try:
+        limit = min(max(int(data.get("limit", 80)), 1), 200)
+    except (TypeError, ValueError):
+        return jsonify({"error": "limit must be an integer"}), 400
+
+    try:
+        repo = get_repo_path(repo_path)
+        commits = list_commits(str(repo), search=search, limit=limit)
+        return jsonify({"commits": commits, "count": len(commits)})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except GitAnalysisError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        err = str(e) if app.debug else "Could not load commits"
         return jsonify({"error": err}), 400
 
 

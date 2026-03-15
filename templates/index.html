@@ -71,6 +71,20 @@
                         <button id="analyzeBtn">Analyze commit</button>
                         <button id="analyzeRangeBtn" class="secondary">Analyze range</button>
                     </div>
+                    <div class="field commit-picker">
+                        <label for="commitSearch">Recent Commits</label>
+                        <div class="commit-search-row">
+                            <input type="text" id="commitSearch" placeholder="Search by message, hash, or author">
+                            <button type="button" id="loadCommitsBtn" class="secondary">Refresh</button>
+                        </div>
+                        <div class="button-row">
+                            <button type="button" id="selectAllCommitsBtn" class="secondary">Select all shown</button>
+                            <button type="button" id="clearCommitSelectionBtn" class="secondary">Clear selection</button>
+                            <button type="button" id="analyzeSelectedBtn">Analyze selected</button>
+                        </div>
+                        <p class="hint" id="selectedCommitsInfo">No commits selected.</p>
+                        <div id="commitList" class="commit-list" role="listbox" aria-label="Commit picker"></div>
+                    </div>
                 </div>
                 <div class="action-group">
                     <h3>Pre-commit Check</h3>
