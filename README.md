@@ -7,6 +7,7 @@ AI-powered web interface that analyzes Git commits for bugs, security issues, an
 - **Analyze commits** – Detect bugs, security issues, and code quality problems
 - **Analyze commit ranges** – Review a revision range like `HEAD~5..HEAD`
 - **Analyze multiple refs** – Enter comma/newline-separated refs and analyze each
+- **Commit picker with search** – Browse recent commits, filter, select, and analyze chosen commits
 - **Tabbed results UI** – Each commit result opens in its own tab/panel
 - **Pre-commit check** – Review staged changes before committing
 - **Multi-model** – Use any model on OpenRouter (GPT-4, Claude, Gemini, etc.)
@@ -63,6 +64,7 @@ Then open http://127.0.0.1:5000 in your browser.
   - range in same input: `HEAD~5..HEAD`
   - multiple refs: `abc123,def456` (comma or newline separated)
 - **Analyze Range** – Use dedicated range input/button for range-only workflow
+- **Recent Commits picker** – Search by message/hash/author, select one or more commits, then click **Analyze selected**
 - **Check Staged** – Analyze staged changes before committing
 - Set your OpenRouter API key (or save it for reuse) and repository path in the form
 - Multi-commit analyses render one tab per commit result to avoid crowded output
@@ -83,6 +85,11 @@ Then open http://127.0.0.1:5000 in your browser.
 - `POST /api/check`  
   Analyze staged changes. Returns `result`, `diff`, `diff_truncated`.
 
+- `POST /api/commits`  
+  Load recent commits for the commit picker with optional search and limit. Returns:
+  - `commits[]` with `ref`, `short_ref`, `title`, `author`, `date`
+  - `count`
+
 - `POST /api/models`  
   Loads available OpenRouter models for the model picker.
 
@@ -92,6 +99,7 @@ Then open http://127.0.0.1:5000 in your browser.
 ## Limits and behavior notes
 
 - Range analysis defaults to `max_commits=20`; server clamps `max_commits` to `1..50`.
+- Commit picker requests up to 120 commits by default; API clamps `limit` to `1..200`.
 - AI analysis input diff is truncated to 12,000 chars (`AI_DIFF_CHAR_LIMIT`).
 - UI diff payload is truncated to 150,000 chars (`UI_DIFF_CHAR_LIMIT`) and flagged by `diff_truncated`.
 - API key resolution order: request key -> saved key -> `OPENROUTER_API_KEY`.
