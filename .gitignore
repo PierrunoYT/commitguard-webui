@@ -42,6 +42,9 @@ env/
 .env.local
 *.pem
 
+# Internal docs (not for distribution)
+PUBLISHING.md
+
 # Testing / coverage
 .pytest_cache/
 .coverage
