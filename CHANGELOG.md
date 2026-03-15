@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2025-03-15
+
+### Added
+
+- `-m` short option for `--model` (e.g. `commitguard analyze -m google/gemini-pro`)
+- `OPENROUTER_MODEL` environment variable to set default model
+
+### Changed
+
+- Model option now reads from `OPENROUTER_MODEL` when not specified via CLI
+
 ## [0.2.1] - 2025-03-15
 
 ### Added

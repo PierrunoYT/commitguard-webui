@@ -42,6 +42,13 @@ export OPENROUTER_API_KEY=sk-or-...
 $env:OPENROUTER_API_KEY = "sk-or-..."
 ```
 
+Optional – default model (otherwise `openai/gpt-4o-mini`):
+
+```bash
+export OPENROUTER_MODEL=anthropic/claude-3.5-sonnet   # Linux/macOS
+$env:OPENROUTER_MODEL = "anthropic/claude-3.5-sonnet" # Windows
+```
+
 ## Usage
 
 ```bash
@@ -59,7 +66,7 @@ commitguard check
 
 # Use a different model
 commitguard analyze --model anthropic/claude-3.5-sonnet
-commitguard analyze --model google/gemini-pro
+commitguard analyze -m google/gemini-pro
 ```
 
 ### Options
@@ -68,7 +75,7 @@ commitguard analyze --model google/gemini-pro
 |--------|-------------|
 | `-r, --repo PATH` | Path to Git repository (default: current dir) |
 | `--api-key KEY` | OpenRouter API key (or `OPENROUTER_API_KEY` env) |
-| `--model MODEL` | Model to use (default: `openai/gpt-4o-mini`) |
+| `-m, --model MODEL` | Model to use (default: `openai/gpt-4o-mini` or `OPENROUTER_MODEL` env) |
 
 ### Model examples
 
@@ -80,6 +87,17 @@ commitguard analyze --model google/gemini-pro
 | `google/gemini-pro` | Alternative option |
 
 See [OpenRouter models](https://openrouter.ai/models) for the full list.
+
+## Troubleshooting
+
+| Error | Solution |
+|-------|----------|
+| Invalid or missing API key | Set `OPENROUTER_API_KEY` or use `--api-key`. Get a key at [openrouter.ai/keys](https://openrouter.ai/keys) |
+| Model not found | Use the full model ID (e.g. `openai/gpt-4o-mini`). Check [openrouter.ai/models](https://openrouter.ai/models) |
+| Rate limit exceeded | Wait and retry, or switch to a different model |
+| Service unavailable | OpenRouter may be down; try again later |
+
+**Security:** Never commit your API key. Use environment variables or `--api-key` at runtime.
 
 ## Development
 

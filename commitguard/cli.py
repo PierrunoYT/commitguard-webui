@@ -48,8 +48,10 @@ def main() -> None:
 )
 @click.option(
     "--model",
+    "-m",
+    envvar="OPENROUTER_MODEL",
     default="openai/gpt-4o-mini",
-    help="Model to use (e.g. openai/gpt-4o, anthropic/claude-3.5-sonnet, google/gemini-pro).",
+    help="Model to use (e.g. openai/gpt-4o, anthropic/claude-3.5-sonnet, google/gemini-pro). Set OPENROUTER_MODEL for default.",
 )
 def analyze(
     commit: str,
@@ -94,8 +96,10 @@ def analyze(
 )
 @click.option(
     "--model",
+    "-m",
+    envvar="OPENROUTER_MODEL",
     default="openai/gpt-4o-mini",
-    help="Model to use (e.g. openai/gpt-4o, anthropic/claude-3.5-sonnet).",
+    help="Model to use (e.g. openai/gpt-4o, anthropic/claude-3.5-sonnet). Set OPENROUTER_MODEL for default.",
 )
 def check(
     repo_path: Path,
