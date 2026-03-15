@@ -10,6 +10,7 @@ const modelPanel = document.getElementById("modelPanel");
 const modelDropdown = document.getElementById("modelDropdown");
 const loadModelsBtn = document.getElementById("loadModelsBtn");
 const ref = document.getElementById("ref");
+const includeDiff = document.getElementById("includeDiff");
 const analyzeBtn = document.getElementById("analyzeBtn");
 const checkBtn = document.getElementById("checkBtn");
 const result = document.getElementById("result");
@@ -91,10 +92,21 @@ function populateModelSelect(models, preferredId) {
 function renderMarkdown(text) {
     if (!text || !text.trim()) return "";
     const raw = marked.parse(text.trim(), { gfm: true, breaks: true });
-    return DOMPurify.sanitize(raw, {
-        ALLOWED_TAGS: ["p", "br", "strong", "em", "code", "pre", "ul", "ol", "li", "h1", "h2", "h3", "h4", "blockquote", "hr", "a"],
-        ALLOWED_ATTR: ["href", "target"]
-    });
+    const hook = (node) => {
+        if (node.tagName === "A" && node.getAttribute("target") === "_blank") {
+            node.setAttribute("rel", "noopener noreferrer");
+        }
+    };
+    DOMPurify.addHook("afterSanitizeAttributes", hook);
+    try {
+        return DOMPurify.sanitize(raw, {
+            ALLOWED_TAGS: ["p", "br", "strong", "em", "code", "pre", "ul", "ol", "li", "h1", "h2", "h3", "h4", "blockquote", "hr", "a"],
+            ALLOWED_ATTR: ["href", "target", "rel"],
+            ALLOWED_URI_REGEXP: /^(https?|mailto):/i
+        });
+    } finally {
+        DOMPurify.removeHook("afterSanitizeAttributes");
+    }
 }
 
 const diffSection = document.getElementById("diffSection");
@@ -341,6 +353,7 @@ analyzeBtn.addEventListener("click", async () => {
             repo_path: repoPath.value.trim() || ".",
             ref: ref.value.trim() || "HEAD",
             model: model.value,
+            include_diff: includeDiff?.checked !== false,
         });
         showResult(data.result, data.diff);
     } catch (e) {
@@ -357,6 +370,7 @@ checkBtn.addEventListener("click", async () => {
             api_key: apiKey.value.trim() || undefined,
             repo_path: repoPath.value.trim() || ".",
             model: model.value,
+            include_diff: includeDiff?.checked !== false,
         });
         showResult(data.result, data.diff);
     } catch (e) {

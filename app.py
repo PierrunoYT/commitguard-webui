@@ -10,6 +10,7 @@ from flask import Flask, jsonify, render_template, request
 
 from commitguard.analyzer import analyze_commit, analyze_staged
 from config_store import clear_api_key, has_saved_key, load_api_key, save_api_key
+from diff_redactor import redact_diff
 
 OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
 
@@ -77,6 +78,10 @@ def api_analyze():
     try:
         repo = get_repo_path(repo_path)
         result, diff = analyze_commit(str(repo), ref, api_key=api_key, model=model)
+        if data.get("include_diff", True):
+            diff = redact_diff(diff)
+        else:
+            diff = ""
         return jsonify({"result": result, "diff": diff})
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -170,6 +175,10 @@ def api_check():
     try:
         repo = get_repo_path(repo_path)
         result, diff = analyze_staged(str(repo), api_key=api_key, model=model)
+        if data.get("include_diff", True):
+            diff = redact_diff(diff)
+        else:
+            diff = ""
         return jsonify({"result": result, "diff": diff})
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
