@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-03-15
+
+### Added
+
+- Error handling with user-friendly messages for API failures
+- Input validation for API key and model
+- README Troubleshooting section with common errors and solutions
+
+### Changed
+
+- API errors are sanitized – keys and sensitive data are never exposed in error messages
+- Graceful handling of 401/403 (auth), 404 (model not found), 429 (rate limit), 503 (unavailable)
+
 ## [0.2.0] - 2025-03-15
 
 ### Added
