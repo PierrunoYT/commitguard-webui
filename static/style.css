@@ -411,6 +411,32 @@ button:disabled {
     font-size: 0.8rem;
 }
 
+.diff-notice {
+    padding: 0.65rem 0.85rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+}
+
+.diff-notice--warn {
+    background: rgba(245, 158, 11, 0.12);
+    color: #fcd34d;
+}
+
+.diff-notice--info {
+    background: rgba(59, 130, 246, 0.12);
+    color: #93c5fd;
+}
+
+.diff-raw-fallback {
+    margin: 0;
+    padding: 1rem;
+    background: transparent;
+    border: 0;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
 .diff-container diffs-container {
     display: block;
 }

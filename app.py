@@ -8,11 +8,17 @@ from urllib.error import HTTPError, URLError
 
 from flask import Flask, jsonify, render_template, request
 
-from commitguard.analyzer import analyze_commit, analyze_staged
+from commitguard.analyzer import (
+    AIAnalysisError,
+    GitAnalysisError,
+    analyze_commit,
+    analyze_staged,
+)
 from config_store import clear_api_key, has_saved_key, load_api_key, save_api_key
 from diff_redactor import redact_diff
 
 OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
+UI_DIFF_CHAR_LIMIT = 150000
 
 # Min length for OpenRouter keys (sk-or-...); avoid storing junk
 _MIN_KEY_LEN = 20
@@ -45,6 +51,17 @@ def _resolve_api_key(provided: str | None) -> str | None:
     if key:
         return key
     return os.environ.get("OPENROUTER_API_KEY") or None
+
+
+def _truncate_diff_for_ui(diff: str) -> tuple[str, bool]:
+    """Cap diff size returned to the browser to avoid heavy payloads."""
+    if len(diff) <= UI_DIFF_CHAR_LIMIT:
+        return diff, False
+    truncated = (
+        diff[:UI_DIFF_CHAR_LIMIT]
+        + "\n\n[Diff truncated for UI performance. Full patch omitted.]"
+    )
+    return truncated, True
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
@@ -80,11 +97,18 @@ def api_analyze():
         result, diff = analyze_commit(str(repo), ref, api_key=api_key, model=model)
         if data.get("include_diff", True):
             diff = redact_diff(diff)
+            diff, diff_truncated = _truncate_diff_for_ui(diff)
         else:
             diff = ""
-        return jsonify({"result": result, "diff": diff})
+            diff_truncated = False
+        return jsonify({"result": result, "diff": diff, "diff_truncated": diff_truncated})
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
+    except GitAnalysisError as e:
+        return jsonify({"error": str(e)}), 400
+    except AIAnalysisError as e:
+        err = str(e) if app.debug else "AI analysis failed"
+        return jsonify({"error": err}), 502
     except Exception as e:
         err = str(e) if app.debug else "Analysis failed"
         return jsonify({"error": err}), 400
@@ -177,11 +201,18 @@ def api_check():
         result, diff = analyze_staged(str(repo), api_key=api_key, model=model)
         if data.get("include_diff", True):
             diff = redact_diff(diff)
+            diff, diff_truncated = _truncate_diff_for_ui(diff)
         else:
             diff = ""
-        return jsonify({"result": result, "diff": diff})
+            diff_truncated = False
+        return jsonify({"result": result, "diff": diff, "diff_truncated": diff_truncated})
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
+    except GitAnalysisError as e:
+        return jsonify({"error": str(e)}), 400
+    except AIAnalysisError as e:
+        err = str(e) if app.debug else "AI analysis failed"
+        return jsonify({"error": err}), 502
     except Exception as e:
         err = str(e) if app.debug else "Analysis failed"
         return jsonify({"error": err}), 400

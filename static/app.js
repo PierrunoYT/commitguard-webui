@@ -128,7 +128,31 @@ function langFromFilename(filename) {
     return EXT_TO_LANG[ext] || "text";
 }
 
-async function renderDiff(diff) {
+function addDiffNotice(message, level = "warn") {
+    const notice = document.createElement("div");
+    notice.className = `diff-notice diff-notice--${level}`;
+    notice.textContent = message;
+    diffContainer.appendChild(notice);
+}
+
+function renderRawDiffFallback(diff, warning, options = {}) {
+    const { truncated = false } = options;
+    diffSection.hidden = false;
+    diffContainer.innerHTML = "";
+    addDiffNotice(warning, "warn");
+    if (truncated) {
+        addDiffNotice("Diff output was truncated to keep the UI responsive.", "info");
+    }
+    const pre = document.createElement("pre");
+    pre.className = "diff-raw-fallback";
+    pre.textContent = diff;
+    diffContainer.appendChild(pre);
+}
+
+async function renderDiff(diff, options = {}) {
+    const { truncated = false } = options;
+    diffInstances.forEach((d) => d.cleanUp());
+    diffInstances = [];
     if (!diff || !diff.trim()) {
         diffSection.hidden = true;
         diffContainer.innerHTML = "";
@@ -137,14 +161,15 @@ async function renderDiff(diff) {
     try {
         const { parsePatchFiles, FileDiff, setLanguageOverride } = await import("https://esm.sh/@pierre/diffs");
         const files = parsePatchFiles(diff);
-        diffInstances.forEach((d) => d.cleanUp());
-        diffInstances = [];
         diffContainer.innerHTML = "";
         if (files.length === 0) {
-            diffSection.hidden = true;
+            renderRawDiffFallback(diff, "Could not render visual diff. Showing raw patch text instead.", { truncated });
             return;
         }
         diffSection.hidden = false;
+        if (truncated) {
+            addDiffNotice("Diff output was truncated to keep the UI responsive.", "info");
+        }
         for (const file of files) {
             const fallback = file.additionFile?.filename ?? file.deletionFile?.filename ?? file.oldFile?.filename ?? file.newFile?.filename ?? "file.txt";
             ensureFilename(file.oldFile, fallback);
@@ -167,10 +192,16 @@ async function renderDiff(diff) {
                 console.warn("Skipping file in diff:", fileErr);
             }
         }
+        if (!diffInstances.length) {
+            renderRawDiffFallback(diff, "Could not render visual diff. Showing raw patch text instead.", { truncated });
+        }
     } catch (e) {
         console.error("Failed to render diff:", e);
-        diffSection.hidden = true;
-        diffContainer.innerHTML = "";
+        renderRawDiffFallback(
+            diff,
+            "Could not render visual diff in this environment. Showing raw patch text instead.",
+            { truncated }
+        );
     }
 }
 
@@ -183,10 +214,10 @@ function showError(msg) {
     diffInstances = [];
 }
 
-function showResult(text, diff) {
+function showResult(text, diff, options = {}) {
     error.textContent = "";
     result.innerHTML = renderMarkdown(text);
-    renderDiff(diff || "");
+    renderDiff(diff || "", options);
 }
 
 function setLoading(loading) {
@@ -355,7 +386,7 @@ analyzeBtn.addEventListener("click", async () => {
             model: model.value,
             include_diff: includeDiff?.checked !== false,
         });
-        showResult(data.result, data.diff);
+        showResult(data.result, data.diff, { truncated: data.diff_truncated === true });
     } catch (e) {
         showError(e.message);
     } finally {
@@ -372,7 +403,7 @@ checkBtn.addEventListener("click", async () => {
             model: model.value,
             include_diff: includeDiff?.checked !== false,
         });
-        showResult(data.result, data.diff);
+        showResult(data.result, data.diff, { truncated: data.diff_truncated === true });
     } catch (e) {
         showError(e.message);
     } finally {
