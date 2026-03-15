@@ -102,6 +102,42 @@ input:focus, select:focus {
     flex: 1;
 }
 
+.key-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.key-row input {
+    flex: 1;
+    min-width: 12rem;
+}
+
+.key-status {
+    font-size: 0.8rem;
+    color: var(--accent);
+}
+
+.key-status::before {
+    content: "● ";
+}
+
+.key-status.saved::before {
+    color: var(--accent);
+}
+
+.key-status.empty::before {
+    color: var(--muted);
+}
+
+code {
+    font-size: 0.8em;
+    background: var(--surface);
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+}
+
 button.secondary {
     background: var(--surface);
     color: var(--text);

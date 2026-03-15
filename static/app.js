@@ -1,4 +1,7 @@
 const apiKey = document.getElementById("apiKey");
+const keyStatus = document.getElementById("keyStatus");
+const saveKeyBtn = document.getElementById("saveKeyBtn");
+const clearKeyBtn = document.getElementById("clearKeyBtn");
 const repoPath = document.getElementById("repoPath");
 const model = document.getElementById("model");
 const loadModelsBtn = document.getElementById("loadModelsBtn");
@@ -39,16 +42,69 @@ async function post(endpoint, body) {
     return data;
 }
 
-loadModelsBtn.addEventListener("click", async () => {
+async function get(endpoint) {
+    const res = await fetch(endpoint);
+    const data = await res.json();
+    if (!res.ok) {
+        throw new Error(data.error || "Request failed");
+    }
+    return data;
+}
+
+function updateKeyStatus(saved) {
+    keyStatus.textContent = saved ? "Saved" : "";
+    keyStatus.className = "key-status " + (saved ? "saved" : "empty");
+}
+
+async function refreshKeyStatus() {
+    try {
+        const { configured } = await get("/api/settings/key");
+        updateKeyStatus(configured);
+    } catch {
+        updateKeyStatus(false);
+    }
+}
+
+saveKeyBtn.addEventListener("click", async () => {
     const key = apiKey.value.trim();
     if (!key) {
-        showError("Please enter your OpenRouter API key first.");
+        showError("Enter your API key first, then click Save.");
         return;
     }
+    try {
+        await post("/api/settings/key", { api_key: key });
+        updateKeyStatus(true);
+        apiKey.value = "";
+        apiKey.placeholder = "Saved (enter new to override)";
+        showResult("");
+    } catch (e) {
+        showError(e.message);
+    }
+});
+
+clearKeyBtn.addEventListener("click", async () => {
+    try {
+        const res = await fetch("/api/settings/key", { method: "DELETE" });
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || "Failed to clear key");
+        }
+        updateKeyStatus(false);
+        apiKey.placeholder = "sk-or-...";
+        showResult("");
+    } catch (e) {
+        showError(e.message);
+    }
+});
+
+refreshKeyStatus();
+
+loadModelsBtn.addEventListener("click", async () => {
+    const key = apiKey.value.trim();
     loadModelsBtn.disabled = true;
     loadModelsBtn.textContent = "Loading...";
     try {
-        const { models } = await post("/api/models", { api_key: key });
+        const { models } = await post("/api/models", { api_key: key || undefined });
         const current = model.value;
         model.innerHTML = "";
         for (const m of models) {
@@ -69,15 +125,10 @@ loadModelsBtn.addEventListener("click", async () => {
 });
 
 analyzeBtn.addEventListener("click", async () => {
-    const key = apiKey.value.trim();
-    if (!key) {
-        showError("Please enter your OpenRouter API key.");
-        return;
-    }
     setLoading(true);
     try {
         const { result: text } = await post("/api/analyze", {
-            api_key: key,
+            api_key: apiKey.value.trim() || undefined,
             repo_path: repoPath.value.trim() || ".",
             ref: ref.value.trim() || "HEAD",
             model: model.value,
@@ -91,15 +142,10 @@ analyzeBtn.addEventListener("click", async () => {
 });
 
 checkBtn.addEventListener("click", async () => {
-    const key = apiKey.value.trim();
-    if (!key) {
-        showError("Please enter your OpenRouter API key.");
-        return;
-    }
     setLoading(true);
     try {
         const { result: text } = await post("/api/check", {
-            api_key: key,
+            api_key: apiKey.value.trim() || undefined,
             repo_path: repoPath.value.trim() || ".",
             model: model.value,
         });

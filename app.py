@@ -9,8 +9,19 @@ from urllib.error import HTTPError, URLError
 from flask import Flask, jsonify, render_template, request
 
 from commitguard.analyzer import analyze_commit, analyze_staged
+from config_store import clear_api_key, has_saved_key, load_api_key, save_api_key
 
 OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
+
+
+def _resolve_api_key(provided: str | None) -> str | None:
+    """Resolve API key: provided > saved config > env."""
+    if provided and provided.strip():
+        return provided.strip()
+    key = load_api_key()
+    if key:
+        return key
+    return os.environ.get("OPENROUTER_API_KEY") or None
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
@@ -35,7 +46,7 @@ def api_analyze():
     data = request.get_json() or {}
     repo_path = data.get("repo_path", ".")
     ref = data.get("ref", "HEAD")
-    api_key = data.get("api_key") or os.environ.get("OPENROUTER_API_KEY")
+    api_key = _resolve_api_key(data.get("api_key"))
     model = data.get("model", "openai/gpt-4o-mini")
 
     if not api_key:
@@ -53,7 +64,7 @@ def api_analyze():
 def api_models():
     """Fetch available models from OpenRouter (GET /api/v1/models)."""
     data = request.get_json() or {}
-    api_key = data.get("api_key") or os.environ.get("OPENROUTER_API_KEY")
+    api_key = _resolve_api_key(data.get("api_key"))
 
     if not api_key:
         return jsonify({"error": "OpenRouter API key required"}), 400
@@ -85,12 +96,42 @@ def api_models():
         return jsonify({"error": str(e)}), 400
 
 
+@app.route("/api/settings/key", methods=["GET"])
+def api_settings_key_status():
+    """Check if API key is saved (never returns the key)."""
+    return jsonify({"configured": has_saved_key()})
+
+
+@app.route("/api/settings/key", methods=["POST"])
+def api_settings_save_key():
+    """Save API key to secure config file."""
+    data = request.get_json() or {}
+    api_key = (data.get("api_key") or "").strip()
+    if not api_key:
+        return jsonify({"error": "API key is required"}), 400
+    try:
+        save_api_key(api_key)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/settings/key", methods=["DELETE"])
+def api_settings_clear_key():
+    """Remove saved API key."""
+    try:
+        clear_api_key()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/check", methods=["POST"])
 def api_check():
     """Analyze staged changes."""
     data = request.get_json() or {}
     repo_path = data.get("repo_path", ".")
-    api_key = data.get("api_key") or os.environ.get("OPENROUTER_API_KEY")
+    api_key = _resolve_api_key(data.get("api_key"))
     model = data.get("model", "openai/gpt-4o-mini")
 
     if not api_key:

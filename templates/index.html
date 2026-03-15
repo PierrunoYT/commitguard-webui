@@ -17,7 +17,13 @@
             <section class="config">
                 <div class="field">
                     <label for="apiKey">OpenRouter API Key</label>
-                    <input type="password" id="apiKey" placeholder="sk-or-...">
+                    <div class="key-row">
+                        <input type="password" id="apiKey" placeholder="sk-or-...">
+                        <span id="keyStatus" class="key-status"></span>
+                        <button type="button" id="saveKeyBtn" class="secondary">Save</button>
+                        <button type="button" id="clearKeyBtn" class="secondary">Clear saved</button>
+                    </div>
+                    <p class="hint">Leave empty to use saved key. Stored in your user config directory.</p>
                 </div>
                 <div class="field">
                     <label for="repoPath">Repository Path</label>

@@ -23,7 +23,13 @@ pip install -r requirements.txt
 
 ## Configuration
 
-Get an API key at [openrouter.ai/keys](https://openrouter.ai/keys):
+Get an API key at [openrouter.ai/keys](https://openrouter.ai/keys).
+
+**Option 1 – Save in the UI:** Enter your key in the web UI and click **Save**. It is stored in your user config directory with restricted permissions:
+- **Linux/macOS:** `~/.config/commitguard-webui/api_key`
+- **Windows:** `%LOCALAPPDATA%\commitguard-webui\api_key`
+
+**Option 2 – Environment variable:**
 
 ```bash
 # Linux / macOS
@@ -51,7 +57,7 @@ Then open http://127.0.0.1:5000 in your browser.
 
 - **Analyze Commit** – Enter a commit ref (e.g. `HEAD`, `abc123`) and click Analyze
 - **Check Staged** – Analyze staged changes before committing
-- Set your OpenRouter API key and repository path in the form
+- Set your OpenRouter API key (or save it for reuse) and repository path in the form
 
 ### Model examples
 
@@ -73,7 +79,7 @@ See [OpenRouter models](https://openrouter.ai/models) for the full list.
 | Rate limit exceeded | Wait and retry, or switch to a different model |
 | Service unavailable | OpenRouter may be down; try again later |
 
-**Security:** Never commit your API key. Use environment variables or `--api-key` at runtime.
+**Security:** Never commit your API key. Use the UI save option (stored locally) or environment variables.
 
 ## Development
 
