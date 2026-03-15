@@ -13,9 +13,31 @@ from config_store import clear_api_key, has_saved_key, load_api_key, save_api_ke
 
 OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
 
+# Min length for OpenRouter keys (sk-or-...); avoid storing junk
+_MIN_KEY_LEN = 20
+_MAX_KEY_LEN = 512
+
+
+def _validate_api_key(key: str) -> str | None:
+    """
+    Validate API key format. Returns None if valid, or an error message.
+    OpenRouter keys typically start with sk-or- and are 40+ chars.
+    """
+    k = key.strip()
+    if len(k) < _MIN_KEY_LEN:
+        return f"API key too short (min {_MIN_KEY_LEN} characters)"
+    if len(k) > _MAX_KEY_LEN:
+        return f"API key too long (max {_MAX_KEY_LEN} characters)"
+    if not k.isprintable() or "\n" in k or "\r" in k:
+        return "API key contains invalid characters"
+    return None
+
 
 def _resolve_api_key(provided: str | None) -> str | None:
-    """Resolve API key: provided > saved config > env."""
+    """
+    Resolve API key from: (1) provided value, (2) saved config file, (3) env var.
+    Returns None if no key is available.
+    """
     if provided and provided.strip():
         return provided.strip()
     key = load_api_key()
@@ -27,7 +49,7 @@ app = Flask(__name__, static_folder="static", template_folder="templates")
 
 
 def get_repo_path(path: str | None) -> Path:
-    """Resolve repository path. Defaults to current directory."""
+    """Resolve repository path. Defaults to current directory. Raises ValueError if not a Git repo."""
     repo_path = Path(path or ".").resolve()
     if not (repo_path / ".git").exists():
         raise ValueError(f"Not a Git repository: {repo_path}")
@@ -56,8 +78,11 @@ def api_analyze():
         repo = get_repo_path(repo_path)
         result = analyze_commit(str(repo), ref, api_key=api_key, model=model)
         return jsonify({"result": result})
-    except Exception as e:
+    except ValueError as e:
         return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        err = str(e) if app.debug else "Analysis failed"
+        return jsonify({"error": err}), 400
 
 
 @app.route("/api/models", methods=["POST"])
@@ -109,11 +134,16 @@ def api_settings_save_key():
     api_key = (data.get("api_key") or "").strip()
     if not api_key:
         return jsonify({"error": "API key is required"}), 400
+    err = _validate_api_key(api_key)
+    if err:
+        return jsonify({"error": err}), 400
     try:
         save_api_key(api_key)
         return jsonify({"ok": True})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except OSError as e:
+        return jsonify({"error": "Could not save API key"}), 500
+    except Exception:
+        return jsonify({"error": "An error occurred"}), 500
 
 
 @app.route("/api/settings/key", methods=["DELETE"])
@@ -122,8 +152,8 @@ def api_settings_clear_key():
     try:
         clear_api_key()
         return jsonify({"ok": True})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        return jsonify({"error": "An error occurred"}), 500
 
 
 @app.route("/api/check", methods=["POST"])
@@ -141,8 +171,11 @@ def api_check():
         repo = get_repo_path(repo_path)
         result = analyze_staged(str(repo), api_key=api_key, model=model)
         return jsonify({"result": result})
-    except Exception as e:
+    except ValueError as e:
         return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        err = str(e) if app.debug else "Analysis failed"
+        return jsonify({"error": err}), 400
 
 
 if __name__ == "__main__":
