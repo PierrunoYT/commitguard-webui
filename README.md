@@ -100,7 +100,11 @@ Then open http://127.0.0.1:5000 in your browser.
 
 - Range analysis defaults to `max_commits=20`; server clamps `max_commits` to `1..50`.
 - Commit picker requests up to 120 commits by default; API clamps `limit` to `1..200`.
-- AI analysis input diff is truncated to 12,000 chars (`AI_DIFF_CHAR_LIMIT`).
+- AI analysis input diff is validated before calling OpenRouter:
+  - hard limit: `COMMITGUARD_MAX_DIFF` (default `50000` chars)
+  - warning threshold (server log only): `COMMITGUARD_WARN_DIFF` (default `30000` chars)
+  - token estimate uses `COMMITGUARD_CHARS_PER_TOKEN` (default `4`) for messaging
+- If a diff exceeds the hard limit, the API returns `413` with a clear message instead of sending the request upstream.
 - UI diff payload is truncated to 150,000 chars (`UI_DIFF_CHAR_LIMIT`) and flagged by `diff_truncated`.
 - API key resolution order: request key -> saved key -> `OPENROUTER_API_KEY`.
 

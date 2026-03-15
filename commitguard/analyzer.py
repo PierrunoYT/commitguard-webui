@@ -1,10 +1,17 @@
 """Commit analysis using AI via OpenRouter."""
 
+import logging
+import os
+
 from git import Repo
 from git.exc import GitCommandError
 from openai import OpenAI
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+DEFAULT_MAX_DIFF_CHARS = 50_000
+DEFAULT_WARN_DIFF_CHARS = 30_000
+DEFAULT_CHARS_PER_TOKEN = 4
+logger = logging.getLogger(__name__)
 
 
 class AnalysisError(Exception):
@@ -18,6 +25,11 @@ class GitAnalysisError(AnalysisError):
 class AIAnalysisError(AnalysisError):
     """Raised when AI provider operations fail during analysis."""
 
+
+class DiffTooLargeError(AnalysisError):
+    """Raised when a diff exceeds configured safe analysis limits."""
+
+
 SYSTEM_PROMPT = """You are a code review assistant. Analyze Git commits for:
 1. Potential bugs and logic errors
 2. Security vulnerabilities
@@ -27,6 +39,54 @@ SYSTEM_PROMPT = """You are a code review assistant. Analyze Git commits for:
 
 Respond in markdown. Be concise. If nothing concerning is found, say "No issues detected."
 """
+
+
+def _env_int(name: str, default: int, *, min_value: int = 1) -> int:
+    """Read an integer environment variable with fallback and lower bound."""
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        logger.warning("Invalid %s value %r; using default %s", name, raw, default)
+        return default
+    return max(min_value, value)
+
+
+MAX_DIFF_CHARS = _env_int("COMMITGUARD_MAX_DIFF", DEFAULT_MAX_DIFF_CHARS)
+WARN_DIFF_CHARS = min(
+    _env_int("COMMITGUARD_WARN_DIFF", DEFAULT_WARN_DIFF_CHARS),
+    MAX_DIFF_CHARS,
+)
+CHARS_PER_TOKEN = _env_int("COMMITGUARD_CHARS_PER_TOKEN", DEFAULT_CHARS_PER_TOKEN)
+
+
+def _estimate_tokens(char_count: int) -> int:
+    """Rough token estimate to help users understand request size."""
+    return max(1, (char_count + CHARS_PER_TOKEN - 1) // CHARS_PER_TOKEN)
+
+
+def _validate_diff_size(diff: str, *, context: str) -> None:
+    """Validate diff size and raise with actionable guidance if too large."""
+    size = len(diff)
+    if size > MAX_DIFF_CHARS:
+        estimated = _estimate_tokens(size)
+        raise DiffTooLargeError(
+            f"Diff for {context} is too large to analyze safely "
+            f"({size:,} chars, ~{estimated:,} tokens). "
+            f"Limit is COMMITGUARD_MAX_DIFF={MAX_DIFF_CHARS:,}. "
+            "Try a smaller commit/range or increase COMMITGUARD_MAX_DIFF deliberately."
+        )
+    if size > WARN_DIFF_CHARS:
+        estimated = _estimate_tokens(size)
+        logger.warning(
+            "Large diff for %s (%s chars, ~%s tokens). "
+            "Consider splitting changes if analysis gets slow/expensive.",
+            context,
+            f"{size:,}",
+            f"{estimated:,}",
+        )
 
 
 def _get_diff(repo: Repo, commit) -> str:
@@ -80,6 +140,7 @@ def _collect_commit_files(commit) -> list[str]:
 def _analyze_commit_object(repo: Repo, commit, *, api_key: str, model: str) -> tuple[str, str]:
     """Analyze a commit object and return (result, diff)."""
     diff = _get_diff(repo, commit)
+    _validate_diff_size(diff, context=f"commit {commit.hexsha[:8]}")
     files = _collect_commit_files(commit)
     result = _call_ai(diff, commit.message, files, api_key, model)
     return (result, diff)
@@ -101,6 +162,8 @@ def analyze_commit(
 
     try:
         return _analyze_commit_object(repo, commit, api_key=api_key, model=model)
+    except DiffTooLargeError:
+        raise
     except Exception as e:
         raise AIAnalysisError(f"AI analysis failed: {e}") from e
 
@@ -137,6 +200,10 @@ def analyze_commit_range(
                     "diff": diff,
                 }
             )
+        except DiffTooLargeError as e:
+            raise DiffTooLargeError(
+                f"Commit {commit.hexsha[:8]} cannot be analyzed: {e}"
+            ) from e
         except Exception as e:
             raise AIAnalysisError(
                 f"AI analysis failed for commit {commit.hexsha[:8]}: {e}"
@@ -156,6 +223,7 @@ def analyze_staged(
         diff = repo.git.diff("--cached")
         if not diff.strip():
             return ("No staged changes to analyze.", "")
+        _validate_diff_size(diff, context="staged changes")
 
         try:
             diff_obj = repo.index.diff("HEAD")
@@ -175,6 +243,8 @@ def analyze_staged(
     try:
         result = _call_ai(diff, "(staged changes)", files, api_key, model)
         return (result, diff)
+    except DiffTooLargeError:
+        raise
     except Exception as e:
         raise AIAnalysisError(f"AI analysis failed: {e}") from e
 

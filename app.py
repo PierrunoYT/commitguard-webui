@@ -10,6 +10,7 @@ from flask import Flask, jsonify, render_template, request
 
 from commitguard.analyzer import (
     AIAnalysisError,
+    DiffTooLargeError,
     GitAnalysisError,
     analyze_commit,
     analyze_commit_range,
@@ -108,6 +109,8 @@ def api_analyze():
         return jsonify({"error": str(e)}), 400
     except GitAnalysisError as e:
         return jsonify({"error": str(e)}), 400
+    except DiffTooLargeError as e:
+        return jsonify({"error": str(e)}), 413
     except AIAnalysisError as e:
         err = str(e) if app.debug else "AI analysis failed"
         return jsonify({"error": err}), 502
@@ -191,6 +194,8 @@ def api_analyze_range():
         return jsonify({"error": str(e)}), 400
     except GitAnalysisError as e:
         return jsonify({"error": str(e)}), 400
+    except DiffTooLargeError as e:
+        return jsonify({"error": str(e)}), 413
     except AIAnalysisError as e:
         err = str(e) if app.debug else "AI analysis failed"
         return jsonify({"error": err}), 502
@@ -283,6 +288,8 @@ def api_check():
         return jsonify({"error": str(e)}), 400
     except GitAnalysisError as e:
         return jsonify({"error": str(e)}), 400
+    except DiffTooLargeError as e:
+        return jsonify({"error": str(e)}), 413
     except AIAnalysisError as e:
         err = str(e) if app.debug else "AI analysis failed"
         return jsonify({"error": err}), 502
