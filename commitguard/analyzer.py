@@ -65,6 +65,27 @@ def _call_ai(diff: str, message: str, files: list[str], api_key: str, model: str
     return response.choices[0].message.content or "No response."
 
 
+def _collect_commit_files(commit) -> list[str]:
+    """Collect changed file paths for a commit."""
+    files = []
+    for diff_item in commit.diff(
+        commit.parents[0] if commit.parents else None,
+        create_patch=False,
+    ):
+        path = diff_item.b_path or diff_item.a_path
+        if path:
+            files.append(path)
+    return files
+
+
+def _analyze_commit_object(repo: Repo, commit, *, api_key: str, model: str) -> tuple[str, str]:
+    """Analyze a commit object and return (result, diff)."""
+    diff = _get_diff(repo, commit)
+    files = _collect_commit_files(commit)
+    result = _call_ai(diff, commit.message, files, api_key, model)
+    return (result, diff)
+
+
 def analyze_commit(
     repo_path: str,
     ref: str = "HEAD",
@@ -76,23 +97,52 @@ def analyze_commit(
     try:
         repo = Repo(repo_path)
         commit = repo.commit(ref)
-        diff = _get_diff(repo, commit)
-        files = []
-        for diff_item in commit.diff(
-            commit.parents[0] if commit.parents else None,
-            create_patch=False,
-        ):
-            path = diff_item.b_path or diff_item.a_path
-            if path:
-                files.append(path)
     except Exception as e:
         raise GitAnalysisError(f"Could not read commit '{ref}': {e}") from e
 
     try:
-        result = _call_ai(diff, commit.message, files, api_key, model)
-        return (result, diff)
+        return _analyze_commit_object(repo, commit, api_key=api_key, model=model)
     except Exception as e:
         raise AIAnalysisError(f"AI analysis failed: {e}") from e
+
+
+def analyze_commit_range(
+    repo_path: str,
+    rev_range: str,
+    *,
+    api_key: str,
+    model: str = "openai/gpt-4o-mini",
+    max_commits: int = 20,
+) -> list[dict[str, str]]:
+    """Analyze a commit range (e.g., HEAD~5..HEAD). Returns newest-first results."""
+    try:
+        repo = Repo(repo_path)
+        commits = list(repo.iter_commits(rev_range, max_count=max(1, max_commits)))
+        if not commits:
+            raise GitAnalysisError(f"No commits found in range '{rev_range}'")
+    except GitAnalysisError:
+        raise
+    except Exception as e:
+        raise GitAnalysisError(f"Could not read commit range '{rev_range}': {e}") from e
+
+    analyses = []
+    for commit in commits:
+        try:
+            result, diff = _analyze_commit_object(repo, commit, api_key=api_key, model=model)
+            analyses.append(
+                {
+                    "ref": commit.hexsha,
+                    "short_ref": commit.hexsha[:8],
+                    "title": commit.summary or commit.hexsha[:8],
+                    "result": result,
+                    "diff": diff,
+                }
+            )
+        except Exception as e:
+            raise AIAnalysisError(
+                f"AI analysis failed for commit {commit.hexsha[:8]}: {e}"
+            ) from e
+    return analyses
 
 
 def analyze_staged(

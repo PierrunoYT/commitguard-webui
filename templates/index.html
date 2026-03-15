@@ -60,9 +60,17 @@
                     <div class="field">
                         <label for="ref">Commit Ref</label>
                         <input type="text" id="ref" placeholder="HEAD" value="HEAD">
-                        <p class="hint">Use <code>HEAD</code> for latest, <code>HEAD~5</code> for 5 commits ago, or a commit hash.</p>
+                        <p class="hint">Use <code>HEAD</code>, <code>HEAD~5</code>, a hash, a range like <code>HEAD~5..HEAD</code>, or multiple refs like <code>abc123,def456</code>. Multi-commit results open in separate tabs.</p>
                     </div>
-                    <button id="analyzeBtn">Analyze</button>
+                    <div class="field">
+                        <label for="rangeRef">Commit Range</label>
+                        <input type="text" id="rangeRef" placeholder="HEAD~5..HEAD">
+                        <p class="hint">Analyze a range directly (each commit appears in its own result tab).</p>
+                    </div>
+                    <div class="button-row">
+                        <button id="analyzeBtn">Analyze commit</button>
+                        <button id="analyzeRangeBtn" class="secondary">Analyze range</button>
+                    </div>
                 </div>
                 <div class="action-group">
                     <h3>Pre-commit Check</h3>
@@ -72,12 +80,9 @@
             </section>
 
             <section class="output">
-                <h3>Result</h3>
-                <div id="result" class="result-box"></div>
-                <div id="diffSection" class="diff-section" hidden>
-                    <h4 class="diff-section__title">Diff</h4>
-                    <div id="diffContainer" class="diff-container"></div>
-                </div>
+                <h3>Results</h3>
+                <div id="resultTabs" class="result-tabs" hidden></div>
+                <div id="resultPanels" class="result-panels"></div>
                 <div id="error" class="error-box"></div>
             </section>
         </main>

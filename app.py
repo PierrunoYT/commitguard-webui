@@ -12,6 +12,7 @@ from commitguard.analyzer import (
     AIAnalysisError,
     GitAnalysisError,
     analyze_commit,
+    analyze_commit_range,
     analyze_staged,
 )
 from config_store import clear_api_key, has_saved_key, load_api_key, save_api_key
@@ -148,6 +149,53 @@ def api_models():
         return jsonify({"error": msg}), 400
     except (URLError, json.JSONDecodeError) as e:
         return jsonify({"error": str(e)}), 400
+
+
+@app.route("/api/analyze-range", methods=["POST"])
+def api_analyze_range():
+    """Analyze all commits in a range (e.g., HEAD~5..HEAD)."""
+    data = request.get_json() or {}
+    repo_path = data.get("repo_path", ".")
+    rev_range = (data.get("range") or "").strip()
+    api_key = _resolve_api_key(data.get("api_key"))
+    model = data.get("model", "openai/gpt-4o-mini")
+    max_commits = min(max(int(data.get("max_commits", 20)), 1), 50)
+
+    if not api_key:
+        return jsonify({"error": "OpenRouter API key required"}), 400
+    if not rev_range:
+        return jsonify({"error": "Commit range is required (example: HEAD~5..HEAD)"}), 400
+
+    try:
+        repo = get_repo_path(repo_path)
+        analyses = analyze_commit_range(
+            str(repo),
+            rev_range,
+            api_key=api_key,
+            model=model,
+            max_commits=max_commits,
+        )
+        if data.get("include_diff", True):
+            for item in analyses:
+                redacted = redact_diff(item.get("diff", ""))
+                redacted, truncated = _truncate_diff_for_ui(redacted)
+                item["diff"] = redacted
+                item["diff_truncated"] = truncated
+        else:
+            for item in analyses:
+                item["diff"] = ""
+                item["diff_truncated"] = False
+        return jsonify({"results": analyses, "count": len(analyses)})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except GitAnalysisError as e:
+        return jsonify({"error": str(e)}), 400
+    except AIAnalysisError as e:
+        err = str(e) if app.debug else "AI analysis failed"
+        return jsonify({"error": err}), 502
+    except Exception as e:
+        err = str(e) if app.debug else "Analysis failed"
+        return jsonify({"error": err}), 400
 
 
 @app.route("/api/settings/key", methods=["GET"])
