@@ -27,7 +27,6 @@ const resultTabs = document.getElementById("resultTabs");
 const resultPanels = document.getElementById("resultPanels");
 const error = document.getElementById("error");
 
-let diffInstances = [];
 let nextResultId = 1;
 let commitSearchTimer = null;
 
@@ -125,28 +124,8 @@ function renderMarkdown(text) {
     }
 }
 
-function ensureFilename(obj, fallback) {
-    if (obj && (obj.filename == null || obj.filename === "" || obj.filename === "/dev/null")) {
-        obj.filename = fallback || "file.txt";
-    }
-}
-
-const EXT_TO_LANG = { py: "python", js: "javascript", ts: "typescript", jsx: "jsx", tsx: "tsx", html: "html", css: "css", json: "json", md: "markdown", yml: "yaml", yaml: "yaml", sh: "shell", rb: "ruby", go: "go", rs: "rust", java: "java", kt: "kotlin", c: "c", cpp: "cpp", h: "c", hpp: "cpp", php: "php", sql: "sql" };
-
-function langFromFilename(filename) {
-    if (!filename || typeof filename !== "string") return "text";
-    const ext = filename.split(".").pop()?.toLowerCase();
-    return EXT_TO_LANG[ext] || "text";
-}
-
 // Diff and Results utilities
-function cleanupDiffInstances() {
-    diffInstances.forEach((d) => d.cleanUp());
-    diffInstances = [];
-}
-
 function clearResults() {
-    cleanupDiffInstances();
     resultTabs.innerHTML = "";
     resultTabs.hidden = true;
     resultPanels.innerHTML = "";
@@ -180,61 +159,7 @@ async function renderDiff(diff, options = {}) {
         diffContainer.innerHTML = "";
         return;
     }
-    try {
-        const { parsePatchFiles, FileDiff, setLanguageOverride } = await import("https://esm.sh/@pierre/diffs");
-        const files = parsePatchFiles(diff);
-        let renderedFileCount = 0;
-        diffContainer.innerHTML = "";
-        if (files.length === 0) {
-            renderRawDiffFallback(diff, "Could not render visual diff. Showing raw patch text instead.", {
-                truncated,
-                diffSection,
-                diffContainer
-            });
-            return;
-        }
-        diffSection.hidden = false;
-        if (truncated) {
-            addDiffNotice(diffContainer, "Diff output was truncated to keep the UI responsive.", "info");
-        }
-        for (const file of files) {
-            const fallback = file.additionFile?.filename ?? file.deletionFile?.filename ?? file.oldFile?.filename ?? file.newFile?.filename ?? "file.txt";
-            ensureFilename(file.oldFile, fallback);
-            ensureFilename(file.newFile, fallback);
-            ensureFilename(file.additionFile, fallback);
-            ensureFilename(file.deletionFile, fallback);
-            setLanguageOverride(file, langFromFilename(fallback));
-            const wrapper = document.createElement("div");
-            wrapper.className = "diff-file-wrapper";
-            diffContainer.appendChild(wrapper);
-            try {
-                const fileDiff = new FileDiff({
-                    theme: "dark-plus",
-                    themeType: "dark",
-                    diffStyle: "unified",
-                });
-                fileDiff.render({ fileDiff: file, fileContainer: wrapper });
-                diffInstances.push(fileDiff);
-                renderedFileCount += 1;
-            } catch (fileErr) {
-                console.warn("Skipping file in diff:", fileErr);
-            }
-        }
-        if (!renderedFileCount) {
-            renderRawDiffFallback(diff, "Could not render visual diff. Showing raw patch text instead.", {
-                truncated,
-                diffSection,
-                diffContainer
-            });
-        }
-    } catch (e) {
-        console.error("Failed to render diff:", e);
-        renderRawDiffFallback(
-            diff,
-            "Could not render visual diff in this environment. Showing raw patch text instead.",
-            { truncated, diffSection, diffContainer }
-        );
-    }
+    renderRawDiffFallback(diff, "Showing raw patch text.", { truncated, diffSection, diffContainer });
 }
 
 function activateResult(id) {
