@@ -14,7 +14,7 @@ AI-powered CLI that analyzes Git commits for bugs, security issues, and code qua
 From PyPI:
 
 ```bash
-pip install commitguard
+pip install commitguard-ai
 ```
 
 From source (development):
