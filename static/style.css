@@ -1,0 +1,189 @@
+:root {
+    --bg: #0f0f12;
+    --surface: #18181c;
+    --border: #2a2a30;
+    --text: #e4e4e7;
+    --muted: #71717a;
+    --accent: #22c55e;
+    --accent-hover: #16a34a;
+    --danger: #ef4444;
+    --font: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+header {
+    margin-bottom: 2.5rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1.5rem;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.tagline {
+    margin: 0.25rem 0 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+section {
+    margin-bottom: 2rem;
+}
+
+section h3 {
+    margin: 0 0 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.config {
+    display: grid;
+    gap: 1rem;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.field label {
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+input, select {
+    padding: 0.6rem 0.85rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.9rem;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.action-group {
+    padding: 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.action-group .field {
+    margin-bottom: 1rem;
+}
+
+.hint {
+    margin: 0 0 1rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+button {
+    padding: 0.6rem 1.2rem;
+    background: var(--accent);
+    border: none;
+    border-radius: 6px;
+    color: #0a0a0c;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+button:hover {
+    background: var(--accent-hover);
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.output .result-box,
+.output .error-box {
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    min-height: 80px;
+}
+
+.result-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+.result-box:empty::before {
+    content: "Run an analysis to see results...";
+    color: var(--muted);
+}
+
+.error-box {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid var(--danger);
+    color: #fca5a5;
+    margin-top: 0.75rem;
+    display: none;
+}
+
+.error-box:not(:empty) {
+    display: block;
+}
+
+.result-box h1,
+.result-box h2,
+.result-box h3 {
+    margin: 1rem 0 0.5rem;
+    font-size: 1em;
+}
+
+.result-box ul,
+.result-box ol {
+    margin: 0.5rem 0;
+    padding-left: 1.25rem;
+}
+
+@media (max-width: 600px) {
+    .actions {
+        grid-template-columns: 1fr;
+    }
+}

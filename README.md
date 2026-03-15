@@ -1,15 +1,13 @@
-# CommitGuard
+# CommitGuard Web UI
 
-AI-powered CLI that analyzes Git commits for bugs, security issues, and code quality problems. Uses [OpenRouter](https://openrouter.ai/) for access to GPT-4, Claude, Gemini, and 100+ other models.
-
-[GitHub](https://github.com/PierrunoYT/commitguard) · [PyPI](https://pypi.org/project/commitguard-ai/)
+AI-powered web interface that analyzes Git commits for bugs, security issues, and code quality problems. Uses [OpenRouter](https://openrouter.ai/) for access to GPT-4, Claude, Gemini, and 100+ other models.
 
 ## Features
 
 - **Analyze commits** – Detect bugs, security issues, and code quality problems
 - **Pre-commit check** – Review staged changes before committing
 - **Multi-model** – Use any model on OpenRouter (GPT-4, Claude, Gemini, etc.)
-- **Simple CLI** – One command, clear output
+- **Web UI** – Browser-based interface with Python backend
 
 ## Requirements
 
@@ -19,15 +17,8 @@ AI-powered CLI that analyzes Git commits for bugs, security issues, and code qua
 ## Installation
 
 ```bash
-pip install commitguard-ai
-```
-
-From source:
-
-```bash
-git clone https://github.com/PierrunoYT/commitguard.git
-cd commitguard
-pip install -e .
+cd commitguard-webui
+pip install -r requirements.txt
 ```
 
 ## Configuration
@@ -52,30 +43,15 @@ $env:OPENROUTER_MODEL = "anthropic/claude-3.5-sonnet" # Windows
 ## Usage
 
 ```bash
-# Analyze last commit
-commitguard analyze
-
-# Analyze specific commit
-commitguard analyze abc123
-
-# Analyze last 5 commits
-commitguard analyze -n 5
-
-# Analyze staged changes (before commit)
-commitguard check
-
-# Use a different model
-commitguard analyze --model anthropic/claude-3.5-sonnet
-commitguard analyze -m google/gemini-pro
+# Start the web server
+python app.py
 ```
 
-### Options
+Then open http://127.0.0.1:5000 in your browser.
 
-| Option | Description |
-|--------|-------------|
-| `-r, --repo PATH` | Path to Git repository (default: current dir) |
-| `--api-key KEY` | OpenRouter API key (or `OPENROUTER_API_KEY` env) |
-| `-m, --model MODEL` | Model to use (default: `openai/gpt-4o-mini` or `OPENROUTER_MODEL` env) |
+- **Analyze Commit** – Enter a commit ref (e.g. `HEAD`, `abc123`) and click Analyze
+- **Check Staged** – Analyze staged changes before committing
+- Set your OpenRouter API key and repository path in the form
 
 ### Model examples
 
@@ -102,13 +78,9 @@ See [OpenRouter models](https://openrouter.ai/models) for the full list.
 ## Development
 
 ```bash
-python -m commitguard.cli analyze
+python app.py
 ```
 
 ## License
 
 [MIT](LICENSE)
-
-## Changelog
-
-[CHANGELOG.md](CHANGELOG.md)

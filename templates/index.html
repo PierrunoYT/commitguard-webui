@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CommitGuard</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CommitGuard</h1>
+            <p class="tagline">AI-powered Git commit analysis</p>
+        </header>
+
+        <main>
+            <section class="config">
+                <div class="field">
+                    <label for="apiKey">OpenRouter API Key</label>
+                    <input type="password" id="apiKey" placeholder="sk-or-...">
+                </div>
+                <div class="field">
+                    <label for="repoPath">Repository Path</label>
+                    <input type="text" id="repoPath" placeholder="." value=".">
+                </div>
+                <div class="field">
+                    <label for="model">Model</label>
+                    <select id="model">
+                        <option value="openai/gpt-4o-mini">GPT-4o Mini (fast)</option>
+                        <option value="openai/gpt-4o">GPT-4o</option>
+                        <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+                        <option value="google/gemini-pro">Gemini Pro</option>
+                    </select>
+                </div>
+            </section>
+
+            <section class="actions">
+                <div class="action-group">
+                    <h3>Analyze Commit</h3>
+                    <div class="field">
+                        <label for="ref">Commit Ref</label>
+                        <input type="text" id="ref" placeholder="HEAD" value="HEAD">
+                    </div>
+                    <button id="analyzeBtn">Analyze</button>
+                </div>
+                <div class="action-group">
+                    <h3>Pre-commit Check</h3>
+                    <p class="hint">Analyze staged changes before committing</p>
+                    <button id="checkBtn">Check Staged</button>
+                </div>
+            </section>
+
+            <section class="output">
+                <h3>Result</h3>
+                <div id="result" class="result-box"></div>
+                <div id="error" class="error-box"></div>
+            </section>
+        </main>
+    </div>
+    <script src="/static/app.js"></script>
+</body>
+</html>
