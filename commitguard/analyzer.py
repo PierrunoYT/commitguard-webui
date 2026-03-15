@@ -1,8 +1,9 @@
-"""Commit analysis using AI."""
+"""Commit analysis using AI via OpenRouter."""
 
 from git import Repo
 from openai import OpenAI
 
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 SYSTEM_PROMPT = """You are a code review assistant. Analyze Git commits for:
 1. Potential bugs and logic errors
@@ -25,8 +26,11 @@ def _get_diff(repo: Repo, commit) -> str:
 
 
 def _call_ai(diff: str, message: str, files: list[str], api_key: str, model: str) -> str:
-    """Call OpenAI API for analysis."""
-    client = OpenAI(api_key=api_key)
+    """Call OpenRouter API for analysis (supports multiple models)."""
+    client = OpenAI(
+        base_url=OPENROUTER_BASE_URL,
+        api_key=api_key,
+    )
     user_content = f"""Analyze this commit:
 
 **Message:** {message}
@@ -52,7 +56,7 @@ def analyze_commit(
     ref: str = "HEAD",
     *,
     api_key: str,
-    model: str = "gpt-4o-mini",
+    model: str = "openai/gpt-4o-mini",
 ) -> str:
     """Analyze a specific commit."""
     repo = Repo(repo_path)
@@ -66,7 +70,7 @@ def analyze_staged(
     repo_path: str,
     *,
     api_key: str,
-    model: str = "gpt-4o-mini",
+    model: str = "openai/gpt-4o-mini",
 ) -> str:
     """Analyze staged changes."""
     repo = Repo(repo_path)

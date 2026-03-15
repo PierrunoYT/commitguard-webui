@@ -43,13 +43,13 @@ def main() -> None:
 )
 @click.option(
     "--api-key",
-    envvar="OPENAI_API_KEY",
-    help="OpenAI API key (or set OPENAI_API_KEY).",
+    envvar="OPENROUTER_API_KEY",
+    help="OpenRouter API key (or set OPENROUTER_API_KEY).",
 )
 @click.option(
     "--model",
-    default="gpt-4o-mini",
-    help="OpenAI model to use.",
+    default="openai/gpt-4o-mini",
+    help="Model to use (e.g. openai/gpt-4o, anthropic/claude-3.5-sonnet, google/gemini-pro).",
 )
 def analyze(
     commit: str,
@@ -60,10 +60,10 @@ def analyze(
 ) -> None:
     """Analyze one or more commits for bugs and issues."""
     repo = get_repo_path(str(repo_path))
-    key = api_key or os.environ.get("OPENAI_API_KEY")
+    key = api_key or os.environ.get("OPENROUTER_API_KEY")
     if not key:
         raise click.ClickException(
-            "OpenAI API key required. Set OPENAI_API_KEY or use --api-key."
+            "OpenRouter API key required. Set OPENROUTER_API_KEY or use --api-key."
         )
 
     refs = [commit] if count == 1 else [f"HEAD~{i}" for i in range(count)]
@@ -89,13 +89,13 @@ def analyze(
 )
 @click.option(
     "--api-key",
-    envvar="OPENAI_API_KEY",
-    help="OpenAI API key (or set OPENAI_API_KEY).",
+    envvar="OPENROUTER_API_KEY",
+    help="OpenRouter API key (or set OPENROUTER_API_KEY).",
 )
 @click.option(
     "--model",
-    default="gpt-4o-mini",
-    help="OpenAI model to use.",
+    default="openai/gpt-4o-mini",
+    help="Model to use (e.g. openai/gpt-4o, anthropic/claude-3.5-sonnet).",
 )
 def check(
     repo_path: Path,
@@ -104,10 +104,10 @@ def check(
 ) -> None:
     """Analyze staged changes (before commit)."""
     repo = get_repo_path(str(repo_path))
-    key = api_key or os.environ.get("OPENAI_API_KEY")
+    key = api_key or os.environ.get("OPENROUTER_API_KEY")
     if not key:
         raise click.ClickException(
-            "OpenAI API key required. Set OPENAI_API_KEY or use --api-key."
+            "OpenRouter API key required. Set OPENROUTER_API_KEY or use --api-key."
         )
 
     click.echo("Analyzing staged changes...")

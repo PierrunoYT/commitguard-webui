@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-03-15
+
+### Changed
+
+- Switched from OpenAI API to OpenRouter for multi-model support (GPT-4, Claude, Gemini, etc.)
+- Environment variable: `OPENROUTER_API_KEY` (replaces `OPENAI_API_KEY`)
+- Default model: `openai/gpt-4o-mini`
+
 ## [0.1.0] - 2025-03-15
 
 ### Added

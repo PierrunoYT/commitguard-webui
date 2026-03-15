@@ -7,7 +7,7 @@ AI-powered CLI that analyzes Git commits for bugs, security issues, and code qua
 ## Requirements
 
 - Python 3.9+
-- OpenAI API key
+- [OpenRouter](https://openrouter.ai/) API key (supports GPT-4, Claude, Gemini, and more)
 
 ## Installation
 
@@ -31,14 +31,14 @@ pip install -r requirements.txt
 
 ## Configuration
 
-Set your OpenAI API key:
+Get an API key at [openrouter.ai/keys](https://openrouter.ai/keys), then set it:
 
 ```bash
 # Linux / macOS
-export OPENAI_API_KEY=sk-...
+export OPENROUTER_API_KEY=sk-or-...
 
 # Windows (PowerShell)
-$env:OPENAI_API_KEY = "sk-..."
+$env:OPENROUTER_API_KEY = "sk-or-..."
 ```
 
 Or pass it via `--api-key` when running commands.
@@ -70,8 +70,8 @@ commitguard check
 | Option | Description |
 |--------|-------------|
 | `-r, --repo PATH` | Path to Git repository (default: current dir) |
-| `--api-key KEY` | OpenAI API key (or use `OPENAI_API_KEY` env) |
-| `--model MODEL` | Model to use (default: `gpt-4o-mini`) |
+| `--api-key KEY` | OpenRouter API key (or use `OPENROUTER_API_KEY` env) |
+| `--model MODEL` | Model to use (default: `openai/gpt-4o-mini`). Examples: `openai/gpt-4o`, `anthropic/claude-3.5-sonnet`, `google/gemini-pro` |
 
 ## Development
 
