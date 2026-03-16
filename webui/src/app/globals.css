@@ -30,7 +30,7 @@ html {
 html, body {
   margin: 0;
   height: 100%;
-  overflow: hidden;
+  overflow: auto;
 }
 
 body {
@@ -494,9 +494,12 @@ textarea {
 }
 
 .key-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 0.75rem;
   color: var(--accent);
-  min-width: 1rem;
+  min-width: 1.2rem;
 }
 
 .key-status.saved {
@@ -504,7 +507,19 @@ textarea {
 }
 
 .key-status.empty {
-  color: transparent;
+  color: var(--muted);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 code {

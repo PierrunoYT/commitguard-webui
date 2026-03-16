@@ -6,6 +6,7 @@ import DOMPurify from "dompurify";
 import { api } from "@/lib/api";
 
 const DEFAULT_MAX_DIFF_CHARS = 50000;
+const MAX_MAX_DIFF_CHARS = 200000;
 const DEFAULT_SYSTEM_PROMPT = `You are a code review assistant. Analyze Git commits for:
 1. Potential bugs and logic errors
 2. Security vulnerabilities
@@ -138,8 +139,10 @@ export default function Home() {
       let maxDiff: number | undefined;
       const raw = maxDiffChars?.trim() || "";
       if (raw) {
-        const parsed = parseInt(raw, 10);
-        if (Number.isFinite(parsed) && parsed > 0) maxDiff = parsed;
+        const parsed = Number.parseInt(raw, 10);
+        if (Number.isFinite(parsed) && parsed > 0) {
+          maxDiff = Math.min(parsed, MAX_MAX_DIFF_CHARS);
+        }
       }
       return {
         api_key: apiKey.trim() || undefined,
@@ -238,6 +241,16 @@ export default function Home() {
     setResults([]);
     setError(msg);
   }, []);
+
+  const showSafeError = useCallback(
+    (fallback: string, e: unknown) => {
+      if (process.env.NODE_ENV !== "production") {
+        console.error(fallback, e);
+      }
+      showError(fallback);
+    },
+    [showError]
+  );
 
   const analyzeRange = useCallback(
     async (range: string) => {
@@ -425,6 +438,72 @@ export default function Home() {
   const selectAllCommits = () => setSelectedRefs(new Set(commits.map((c) => c.ref)));
   const clearCommitSelection = () => setSelectedRefs(new Set());
 
+  const handleSaveApiKey = useCallback(async () => {
+    const key = apiKey.trim();
+    if (!key) {
+      showError("Enter API key first.");
+      return;
+    }
+    try {
+      await api.settingsKey.save({ api_key: key });
+      setKeySaved(true);
+      setApiKey("");
+      setResults([]);
+    } catch (e) {
+      showSafeError("Failed to save API key.", e);
+    }
+  }, [apiKey, showError, showSafeError]);
+
+  const handleClearApiKey = useCallback(async () => {
+    try {
+      await api.settingsKey.clear();
+      setKeySaved(false);
+      setApiKey("");
+      setResults([]);
+    } catch (e) {
+      showSafeError("Failed to clear API key.", e);
+    }
+  }, [showSafeError]);
+
+  const handleSaveGithubToken = useCallback(async () => {
+    const token = githubToken.trim();
+    if (!token) {
+      showError("Enter token first.");
+      return;
+    }
+    try {
+      await api.settingsGithubToken.save({ github_token: token });
+      setGithubTokenSaved(true);
+      setGithubToken("");
+      setResults([]);
+    } catch (e) {
+      showSafeError("Failed to save GitHub token.", e);
+    }
+  }, [githubToken, showError, showSafeError]);
+
+  const handleClearGithubToken = useCallback(async () => {
+    try {
+      await api.settingsGithubToken.clear();
+      setGithubTokenSaved(false);
+      setGithubToken("");
+      setResults([]);
+    } catch (e) {
+      showSafeError("Failed to clear GitHub token.", e);
+    }
+  }, [showSafeError]);
+
+  const handleMaxDiffCharsChange = useCallback((value: string) => {
+    const raw = value.trim();
+    if (!raw) {
+      setMaxDiffChars("");
+      return;
+    }
+    const parsed = Number.parseInt(raw, 10);
+    if (!Number.isFinite(parsed)) return;
+    const clamped = Math.min(Math.max(parsed, 1), MAX_MAX_DIFF_CHARS);
+    setMaxDiffChars(String(clamped));
+  }, []);
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -440,19 +519,27 @@ export default function Home() {
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
               />
-              <span className={`key-status ${keySaved ? "saved" : "empty"}`}>{keySaved ? "✓" : ""}</span>
-              <button type="button" className="secondary compact" onClick={async () => { const key = apiKey.trim(); if (!key) { showError("Enter API key first."); return; } try { await api.settingsKey.save({ api_key: key }); setKeySaved(true); setApiKey(""); setResults([]); } catch (e) { showError(e instanceof Error ? e.message : "Failed"); } }}>Save</button>
-              <button type="button" className="secondary compact" onClick={async () => { try { await api.settingsKey.clear(); setKeySaved(false); setApiKey(""); setResults([]); } catch (e) { showError(e instanceof Error ? e.message : "Failed"); } }}>Clear</button>
+              <span className={`key-status ${keySaved ? "saved" : "empty"}`} role="status" aria-live="polite">
+                <span aria-hidden>{keySaved ? "✓" : "○"}</span>
+                <span className="sr-only">{keySaved ? "API key saved" : "API key not saved"}</span>
+              </span>
+              <button type="button" className="secondary compact" onClick={handleSaveApiKey}>Save</button>
+              <button type="button" className="secondary compact" onClick={handleClearApiKey}>Clear</button>
             </div>
+            <p className="hint">Leave empty to use the saved key from your user config directory.</p>
           </div>
           <div className="config-bar__group">
             <label htmlFor="githubToken">GitHub</label>
             <div className="config-bar__input-row">
               <input type="password" id="githubToken" placeholder="ghp_..." value={githubToken} onChange={(e) => setGithubToken(e.target.value)} />
-              <span className={`key-status ${githubTokenSaved ? "saved" : "empty"}`}>{githubTokenSaved ? "✓" : ""}</span>
-              <button type="button" className="secondary compact" onClick={async () => { const token = githubToken.trim(); if (!token) { showError("Enter token first."); return; } try { await api.settingsGithubToken.save({ github_token: token }); setGithubTokenSaved(true); setGithubToken(""); setResults([]); } catch (e) { showError(e instanceof Error ? e.message : "Failed"); } }}>Save</button>
-              <button type="button" className="secondary compact" onClick={async () => { try { await api.settingsGithubToken.clear(); setGithubTokenSaved(false); setGithubToken(""); setResults([]); } catch (e) { showError(e instanceof Error ? e.message : "Failed"); } }}>Clear</button>
+              <span className={`key-status ${githubTokenSaved ? "saved" : "empty"}`} role="status" aria-live="polite">
+                <span aria-hidden>{githubTokenSaved ? "✓" : "○"}</span>
+                <span className="sr-only">{githubTokenSaved ? "GitHub token saved" : "GitHub token not saved"}</span>
+              </span>
+              <button type="button" className="secondary compact" onClick={handleSaveGithubToken}>Save</button>
+              <button type="button" className="secondary compact" onClick={handleClearGithubToken}>Clear</button>
             </div>
+            <p className="hint">Used for GitHub repo and PR metadata calls when needed.</p>
           </div>
           <div className="config-bar__group config-bar__group--repo">
             <label htmlFor="repoPath">Repository</label>
@@ -500,7 +587,7 @@ export default function Home() {
         {configExpanded && (
           <div className="config-advanced">
             <label className="checkbox-label"><input type="checkbox" checked={includeDiff} onChange={(e) => setIncludeDiff(e.target.checked)} />Include diff</label>
-            <div className="config-advanced__field"><label htmlFor="maxDiffChars">Max diff chars</label><input type="number" id="maxDiffChars" min={1} value={maxDiffChars} onChange={(e) => setMaxDiffChars(e.target.value)} placeholder={String(DEFAULT_MAX_DIFF_CHARS)} /></div>
+            <div className="config-advanced__field"><label htmlFor="maxDiffChars">Max diff chars</label><input type="number" id="maxDiffChars" min={1} max={MAX_MAX_DIFF_CHARS} value={maxDiffChars} onChange={(e) => handleMaxDiffCharsChange(e.target.value)} placeholder={String(DEFAULT_MAX_DIFF_CHARS)} /></div>
             <div className="config-advanced__field config-advanced__prompt"><label htmlFor="systemPrompt">System prompt</label><textarea id="systemPrompt" rows={4} value={systemPrompt} onChange={(e) => setSystemPrompt(e.target.value)} /></div>
           </div>
         )}
