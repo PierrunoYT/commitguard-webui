@@ -526,7 +526,6 @@ export default function Home() {
               <button type="button" className="secondary compact" onClick={handleSaveApiKey}>Save</button>
               <button type="button" className="secondary compact" onClick={handleClearApiKey}>Clear</button>
             </div>
-            <p className="hint">Leave empty to use the saved key from your user config directory.</p>
           </div>
           <div className="config-bar__group">
             <label htmlFor="githubToken">GitHub</label>
@@ -539,7 +538,6 @@ export default function Home() {
               <button type="button" className="secondary compact" onClick={handleSaveGithubToken}>Save</button>
               <button type="button" className="secondary compact" onClick={handleClearGithubToken}>Clear</button>
             </div>
-            <p className="hint">Used for GitHub repo and PR metadata calls when needed.</p>
           </div>
           <div className="config-bar__group config-bar__group--repo">
             <label htmlFor="repoPath">Repository</label>
