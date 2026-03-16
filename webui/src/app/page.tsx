@@ -92,6 +92,24 @@ interface ResultEntry {
   truncated?: boolean;
 }
 
+function formatResultAsMarkdown(entry: ResultEntry): string {
+  const mdParts = [
+    `# ${entry.title}`,
+    "",
+    "## Review",
+    entry.result?.trim() || "_No review content._",
+    "",
+  ];
+  if (entry.diff) {
+    mdParts.push("## Diff", "");
+    if (entry.truncated) {
+      mdParts.push("> Note: Diff output was truncated in the UI.", "");
+    }
+    mdParts.push("```diff", entry.diff, "```", "");
+  }
+  return mdParts.join("\n");
+}
+
 export default function Home() {
   const [apiKey, setApiKey] = useState("");
   const [keySaved, setKeySaved] = useState(false);
@@ -351,6 +369,15 @@ export default function Home() {
     }
   }, [rangeRef, analyzeRange, setLoadingState, showError]);
 
+  const applyQuickRef = useCallback((value: string) => {
+    setRef(value);
+    setRangeRef("");
+  }, []);
+
+  const applyQuickRange = useCallback((value: string) => {
+    setRangeRef(value);
+  }, []);
+
   const handleAnalyzeSelected = useCallback(async () => {
     const refs = Array.from(selectedRefs);
     if (!refs.length) {
@@ -521,21 +548,7 @@ export default function Home() {
   }, []);
 
   const handleExportResultMarkdown = useCallback((entry: ResultEntry) => {
-    const mdParts = [
-      `# ${entry.title}`,
-      "",
-      "## Review",
-      entry.result?.trim() || "_No review content._",
-      "",
-    ];
-    if (entry.diff) {
-      mdParts.push("## Diff", "");
-      if (entry.truncated) {
-        mdParts.push("> Note: Diff output was truncated in the UI.", "");
-      }
-      mdParts.push("```diff", entry.diff, "```", "");
-    }
-    const content = mdParts.join("\n");
+    const content = formatResultAsMarkdown(entry);
     const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const filename = `${toSafeFilename(entry.tabLabel || entry.title)}.md`;
@@ -547,6 +560,33 @@ export default function Home() {
     a.remove();
     URL.revokeObjectURL(url);
   }, []);
+
+  const handleExportAllResultsMarkdown = useCallback(() => {
+    if (!results.length) return;
+    const content = results
+      .map((entry) => formatResultAsMarkdown(entry))
+      .join("\n\n---\n\n");
+    const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const ts = new Date().toISOString().replace(/[:.]/g, "-");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `commitguard-results-${ts}.md`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, [results]);
+
+  const handleCopyActiveResult = useCallback(async () => {
+    const active = results.find((entry) => entry.id === activeResultId) || results[0];
+    if (!active) return;
+    try {
+      await navigator.clipboard.writeText(formatResultAsMarkdown(active));
+    } catch {
+      showError("Failed to copy result to clipboard.");
+    }
+  }, [activeResultId, results, showError]);
 
   return (
     <div className="app-shell">
@@ -667,6 +707,33 @@ export default function Home() {
                 </button>
                 <button type="button" className="secondary" onClick={handleAnalyzeRange} disabled={loading}>
                   Analyze range
+                </button>
+              </div>
+            </div>
+
+            <div className="action-group">
+              <h3>Quick Presets</h3>
+              <p className="hint">Fill common refs and ranges with one click</p>
+              <div className="button-row">
+                <button type="button" className="secondary" onClick={() => applyQuickRef("HEAD")}>
+                  HEAD
+                </button>
+                <button type="button" className="secondary" onClick={() => applyQuickRef("HEAD~1")}>
+                  HEAD~1
+                </button>
+                <button type="button" className="secondary" onClick={() => applyQuickRef("HEAD~10")}>
+                  HEAD~10
+                </button>
+              </div>
+              <div className="button-row">
+                <button type="button" className="secondary" onClick={() => applyQuickRange("HEAD~5..HEAD")}>
+                  Last 5 commits
+                </button>
+                <button type="button" className="secondary" onClick={() => applyQuickRange("HEAD~20..HEAD")}>
+                  Last 20 commits
+                </button>
+                <button type="button" className="secondary" onClick={() => { setRef("HEAD"); setRangeRef(""); }}>
+                  Reset inputs
                 </button>
               </div>
             </div>
@@ -795,6 +862,30 @@ export default function Home() {
                 </button>
               </div>
             )}
+            <div className="action-group">
+              <h3>Output Tools</h3>
+              <p className="hint">Quick actions for current analysis results</p>
+              <div className="button-row">
+                <button type="button" className="secondary" onClick={handleCopyActiveResult} disabled={results.length === 0}>
+                  Copy active result
+                </button>
+                <button type="button" className="secondary" onClick={handleExportAllResultsMarkdown} disabled={results.length === 0}>
+                  Export all as .md
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => {
+                    setResults([]);
+                    setActiveResultId(null);
+                    setError("");
+                  }}
+                  disabled={results.length === 0 && !error}
+                >
+                  Clear output
+                </button>
+              </div>
+            </div>
             </div>
           </section>
         </aside>
