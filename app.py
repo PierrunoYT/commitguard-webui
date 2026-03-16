@@ -6,12 +6,10 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, redirect, request
 
 from commitguard.analyzer import (
     AIAnalysisError,
-    DEFAULT_MAX_DIFF_CHARS,
-    DEFAULT_SYSTEM_PROMPT,
     DiffTooLargeError,
     GitAnalysisError,
     analyze_commit,
@@ -142,7 +140,7 @@ def _resolve_system_prompt(value: object) -> str | None:
     return value
 
 
-app = Flask(__name__, static_folder="static", template_folder="templates")
+app = Flask(__name__)
 
 
 def get_repo_path(path: str | None) -> Path:
@@ -155,12 +153,9 @@ def get_repo_path(path: str | None) -> Path:
 
 @app.route("/")
 def index():
-    """Serve the web UI."""
-    return render_template(
-        "index.html",
-        default_max_diff_chars=DEFAULT_MAX_DIFF_CHARS,
-        default_system_prompt=DEFAULT_SYSTEM_PROMPT,
-    )
+    """Redirect to the Next.js web UI."""
+    ui_url = os.environ.get("COMMITGUARD_UI_URL", "http://localhost:3000")
+    return redirect(ui_url)
 
 
 @app.route("/api/analyze", methods=["POST"])
