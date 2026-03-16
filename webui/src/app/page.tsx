@@ -92,6 +92,7 @@ export default function Home() {
   const [modelDisplay, setModelDisplay] = useState("GPT-4o Mini (default)");
   const [models, setModels] = useState<Array<{ id: string; name?: string }>>([]);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const [modelSearch, setModelSearch] = useState("");
   const [ref, setRef] = useState("HEAD");
   const [rangeRef, setRangeRef] = useState("");
   const [commitSearch, setCommitSearch] = useState("");
@@ -115,11 +116,20 @@ export default function Home() {
     const handleClickOutside = (e: MouseEvent) => {
       if (modelDropdownOpen && modelDropdownRef.current && !modelDropdownRef.current.contains(e.target as Node)) {
         setModelDropdownOpen(false);
+        setModelSearch("");
       }
     };
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
   }, [modelDropdownOpen]);
+
+  const filteredModels = models.length === 0 ? [] : models.filter((m) => {
+    const q = modelSearch.trim().toLowerCase();
+    if (!q) return true;
+    const id = (m.id || "").toLowerCase();
+    const name = (m.name || "").toLowerCase();
+    return id.includes(q) || name.includes(q);
+  });
 
   const isGh = isGithubUrl(repoPath);
 
@@ -444,11 +454,11 @@ export default function Home() {
               <button type="button" className="secondary compact" onClick={async () => { try { await api.settingsGithubToken.clear(); setGithubTokenSaved(false); setGithubToken(""); setResults([]); } catch (e) { showError(e instanceof Error ? e.message : "Failed"); } }}>Clear</button>
             </div>
           </div>
-          <div className="config-bar__group">
+          <div className="config-bar__group config-bar__group--repo">
             <label htmlFor="repoPath">Repository</label>
             <input type="text" id="repoPath" placeholder=". or github.com/owner/repo" value={repoPath} onChange={(e) => setRepoPath(e.target.value)} />
           </div>
-          <div className="config-bar__group">
+          <div className="config-bar__group config-bar__group--model">
             <label htmlFor="model">Model</label>
             <div className="config-bar__model-row">
               <div ref={modelDropdownRef} className={`custom-dropdown ${modelDropdownOpen ? "open" : ""}`}>
@@ -457,9 +467,27 @@ export default function Home() {
                   <span className="custom-dropdown__arrow" aria-hidden>▼</span>
                 </button>
                 <div className="custom-dropdown__panel" hidden={!modelDropdownOpen} role="listbox">
-                  {models.length === 0 ? <div className="custom-dropdown__option selected" data-value="openai/gpt-4o-mini">GPT-4o Mini (default)</div> : models.map((m) => (
-                    <div key={m.id} className={`custom-dropdown__option ${model === m.id ? "selected" : ""}`} data-value={m.id} role="option" onClick={() => { setModel(m.id); setModelDisplay(getModelDisplayName(m)); setModelDropdownOpen(false); }}>{getModelDisplayName(m)}</div>
-                  ))}
+                  {models.length > 0 && (
+                    <div className="custom-dropdown__search">
+                      <input
+                        type="text"
+                        placeholder="Search models..."
+                        value={modelSearch}
+                        onChange={(e) => setModelSearch(e.target.value)}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                  )}
+                  {models.length === 0 ? (
+                    <div className="custom-dropdown__option selected" data-value="openai/gpt-4o-mini">GPT-4o Mini (default)</div>
+                  ) : filteredModels.length === 0 ? (
+                    <div className="custom-dropdown__option custom-dropdown__option--empty">No models match &quot;{modelSearch}&quot;</div>
+                  ) : (
+                    filteredModels.map((m) => (
+                      <div key={m.id} className={`custom-dropdown__option ${model === m.id ? "selected" : ""}`} data-value={m.id} role="option" onClick={() => { setModel(m.id); setModelDisplay(getModelDisplayName(m)); setModelDropdownOpen(false); setModelSearch(""); }}>{getModelDisplayName(m)}</div>
+                    ))
+                  )}
                 </div>
               </div>
               <button type="button" className="secondary compact" onClick={handleLoadModels}>Load</button>
