@@ -3,6 +3,10 @@ const apiKey = document.getElementById("apiKey");
 const keyStatus = document.getElementById("keyStatus");
 const saveKeyBtn = document.getElementById("saveKeyBtn");
 const clearKeyBtn = document.getElementById("clearKeyBtn");
+const githubToken = document.getElementById("githubToken");
+const githubTokenStatus = document.getElementById("githubTokenStatus");
+const saveGithubTokenBtn = document.getElementById("saveGithubTokenBtn");
+const clearGithubTokenBtn = document.getElementById("clearGithubTokenBtn");
 const repoPath = document.getElementById("repoPath");
 const model = document.getElementById("model");
 const modelDisplay = document.getElementById("modelDisplay");
@@ -28,9 +32,29 @@ const checkBtn = document.getElementById("checkBtn");
 const resultTabs = document.getElementById("resultTabs");
 const resultPanels = document.getElementById("resultPanels");
 const error = document.getElementById("error");
+const prList = document.getElementById("prList");
+const loadPrsBtn = document.getElementById("loadPrsBtn");
+const prStateFilter = document.getElementById("prStateFilter");
+const prBrowserSection = document.getElementById("prBrowserSection");
+const precommitSection = document.getElementById("precommitSection");
 
 let nextResultId = 1;
 let commitSearchTimer = null;
+
+// GitHub URL detection
+function isGithubUrl(url) {
+    if (!url) return false;
+    return /^https?:\/\/github\.com\/[\w.\-]+\/[\w.\-]+/.test(url.trim()) ||
+        /^git@github\.com:[\w.\-]+\/[\w.\-]+/.test(url.trim());
+}
+
+// Update UI visibility based on whether we're looking at a GitHub URL or local repo
+function updateRepoModeUi() {
+    const isGh = isGithubUrl(repoPath.value.trim());
+    if (prBrowserSection) prBrowserSection.style.display = isGh ? "" : "none";
+    if (precommitSection) precommitSection.style.display = isGh ? "none" : "";
+    if (checkBtn) checkBtn.disabled = isGh;
+}
 
 // Utilities
 function getModelDisplayName(modelInfo) {
@@ -242,7 +266,7 @@ function showError(msg) {
 function setLoading(loading, message = "Analyzing...") {
     analyzeBtn.disabled = loading;
     analyzeRangeBtn.disabled = loading;
-    checkBtn.disabled = loading;
+    checkBtn.disabled = loading || isGithubUrl(repoPath.value.trim());
     if (analyzeSelectedBtn) {
         analyzeSelectedBtn.disabled = loading || getSelectedCommitRefs().length === 0;
     }
@@ -286,12 +310,26 @@ function updateKeyStatus(saved) {
     keyStatus.className = "key-status " + (saved ? "saved" : "empty");
 }
 
+function updateGithubTokenStatus(saved) {
+    githubTokenStatus.textContent = saved ? "Saved" : "";
+    githubTokenStatus.className = "key-status " + (saved ? "saved" : "empty");
+}
+
 async function refreshKeyStatus() {
     try {
         const { configured } = await get("/api/settings/key");
         updateKeyStatus(configured);
     } catch {
         updateKeyStatus(false);
+    }
+}
+
+async function refreshGithubTokenStatus() {
+    try {
+        const { configured } = await get("/api/settings/github-token");
+        updateGithubTokenStatus(configured);
+    } catch {
+        updateGithubTokenStatus(false);
     }
 }
 
@@ -306,6 +344,7 @@ function buildRequestBody(extra = {}) {
     }
     return {
         api_key: apiKey.value.trim() || undefined,
+        github_token: githubToken.value.trim() || undefined,
         repo_path: repoPath.value.trim() || ".",
         model: model.value,
         include_diff: includeDiff?.checked !== false,
@@ -400,6 +439,7 @@ async function loadCommits(searchText = commitSearch?.value?.trim() || "") {
     try {
         const data = await post("/api/commits", {
             repo_path: repoPath.value.trim() || ".",
+            github_token: githubToken.value.trim() || undefined,
             search: searchText || undefined,
             limit: 120,
         });
@@ -410,6 +450,112 @@ async function loadCommits(searchText = commitSearch?.value?.trim() || "") {
     } finally {
         loadCommitsBtn.disabled = false;
         loadCommitsBtn.textContent = previousLabel;
+    }
+}
+
+// PR Browser
+function renderPrList(prs) {
+    if (!prList) return;
+    prList.innerHTML = "";
+    if (!prs || !prs.length) {
+        const empty = document.createElement("div");
+        empty.className = "commit-list-empty";
+        empty.textContent = "No pull requests found.";
+        prList.appendChild(empty);
+        return;
+    }
+
+    for (const pr of prs) {
+        const item = document.createElement("div");
+        item.className = "pr-item";
+
+        const text = document.createElement("div");
+        text.className = "pr-item__text";
+
+        const main = document.createElement("div");
+        main.className = "pr-item__main";
+
+        const numSpan = document.createElement("span");
+        numSpan.className = "pr-item__number";
+        numSpan.textContent = `#${pr.number}`;
+        main.appendChild(numSpan);
+        main.appendChild(document.createTextNode(` ${pr.title || "Untitled"}`));
+        if (pr.draft) {
+            const draftSpan = document.createElement("span");
+            draftSpan.className = "pr-item__draft";
+            draftSpan.textContent = "Draft";
+            main.appendChild(draftSpan);
+        }
+        text.appendChild(main);
+
+        const meta = document.createElement("div");
+        meta.className = "pr-item__meta";
+        const parts = [];
+        if (pr.author) parts.push(`by ${pr.author}`);
+        if (pr.base && pr.head) parts.push(`${pr.head} → ${pr.base}`);
+        if (pr.updated_at) parts.push(new Date(pr.updated_at).toLocaleDateString());
+        meta.textContent = parts.join(" · ");
+        text.appendChild(meta);
+
+        item.appendChild(text);
+
+        const analyzeBtn = document.createElement("button");
+        analyzeBtn.type = "button";
+        analyzeBtn.className = "analyze-pr-btn";
+        analyzeBtn.textContent = "Analyze";
+        analyzeBtn.addEventListener("click", () => analyzePr(pr.number, pr.title));
+        item.appendChild(analyzeBtn);
+
+        prList.appendChild(item);
+    }
+}
+
+async function loadPrs() {
+    if (!loadPrsBtn || !prList) return;
+    const repoVal = repoPath.value.trim();
+    if (!isGithubUrl(repoVal)) {
+        prList.innerHTML = '<div class="commit-list-empty">Enter a GitHub URL in the Repository field.</div>';
+        return;
+    }
+    loadPrsBtn.disabled = true;
+    const previousLabel = loadPrsBtn.textContent;
+    loadPrsBtn.textContent = "Loading...";
+    prList.innerHTML = '<div class="commit-list-empty">Loading pull requests...</div>';
+    try {
+        const data = await post("/api/github/prs", {
+            repo_path: repoVal,
+            github_token: githubToken.value.trim() || undefined,
+            state: prStateFilter?.value || "open",
+            limit: 50,
+        });
+        renderPrList(data.prs || []);
+    } catch (e) {
+        prList.innerHTML = `<div class="commit-list-empty">${e.message}</div>`;
+    } finally {
+        loadPrsBtn.disabled = false;
+        loadPrsBtn.textContent = previousLabel;
+    }
+}
+
+async function analyzePr(prNumber, prTitle) {
+    const label = `PR #${prNumber}${prTitle ? `: ${prTitle}` : ""}`;
+    setLoading(true, `Analyzing ${label}...`);
+    try {
+        const data = await post("/api/github/analyze-pr", buildRequestBody({ pr_number: prNumber }));
+        const tabLabel = normalizeTabLabel(`PR #${data.pr_number} ${data.pr_title || ""}`.trim());
+        showResults([
+            {
+                tabLabel,
+                title: `PR #${data.pr_number}: ${data.pr_title || "Pull Request"}`,
+                result: data.result || "",
+                diff: data.diff || "",
+                truncated: data.diff_truncated === true,
+            },
+        ]);
+    } catch (e) {
+        showError(e.message);
+    } finally {
+        setLoading(false);
     }
 }
 
@@ -490,9 +636,44 @@ clearKeyBtn.addEventListener("click", async () => {
     }
 });
 
+// GitHub token (save/clear)
+saveGithubTokenBtn.addEventListener("click", async () => {
+    const token = githubToken.value.trim();
+    if (!token) {
+        showError("Enter your GitHub token first, then click Save.");
+        return;
+    }
+    try {
+        await post("/api/settings/github-token", { github_token: token });
+        updateGithubTokenStatus(true);
+        githubToken.value = "";
+        githubToken.placeholder = "Saved (enter new to override)";
+        showResults([]);
+    } catch (e) {
+        showError(e.message);
+    }
+});
+
+clearGithubTokenBtn.addEventListener("click", async () => {
+    try {
+        const res = await fetch("/api/settings/github-token", { method: "DELETE" });
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || "Failed to clear GitHub token");
+        }
+        updateGithubTokenStatus(false);
+        githubToken.placeholder = "ghp_... or github_pat_...";
+        showResults([]);
+    } catch (e) {
+        showError(e.message);
+    }
+});
+
 refreshKeyStatus();
+refreshGithubTokenStatus();
 setModelTooltip();
 updateCommitSelectionUi();
+updateRepoModeUi();
 loadCommits();
 
 // Model Dropdown Events
@@ -562,7 +743,13 @@ commitSearch && commitSearch.addEventListener("keydown", (e) => {
 });
 
 repoPath.addEventListener("change", () => {
+    updateRepoModeUi();
     loadCommits(commitSearch?.value?.trim() || "");
+    if (prList) prList.innerHTML = "";
+});
+
+repoPath.addEventListener("input", () => {
+    updateRepoModeUi();
 });
 
 selectAllCommitsBtn && selectAllCommitsBtn.addEventListener("click", () => {
@@ -595,6 +782,17 @@ analyzeSelectedBtn && analyzeSelectedBtn.addEventListener("click", async () => {
         showError(e.message);
     } finally {
         setLoading(false);
+    }
+});
+
+// PR Browser events
+loadPrsBtn && loadPrsBtn.addEventListener("click", () => {
+    loadPrs();
+});
+
+prStateFilter && prStateFilter.addEventListener("change", () => {
+    if (prList && prList.children.length > 0 && !prList.querySelector(".commit-list-empty")) {
+        loadPrs();
     }
 });
 
@@ -661,7 +859,7 @@ analyzeRangeBtn && analyzeRangeBtn.addEventListener("click", async () => {
     if (!rangeRef) return;
     const range = rangeRef.value.trim();
     if (!range) {
-        showError("Enter a commit range first (example: HEAD~5..HEAD).");
+        showError("Enter a commit range first (example: HEAD~5..HEAD or main..feature-branch).");
         return;
     }
     setLoading(true, "Analyzing commit range...");
@@ -676,6 +874,10 @@ analyzeRangeBtn && analyzeRangeBtn.addEventListener("click", async () => {
 
 // Analyze staged changes
 checkBtn.addEventListener("click", async () => {
+    if (isGithubUrl(repoPath.value.trim())) {
+        showError("Pre-commit check is only available for local repositories.");
+        return;
+    }
     setLoading(true, "Analyzing staged changes...");
     try {
         const data = await post("/api/check", buildRequestBody());

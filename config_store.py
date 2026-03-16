@@ -11,8 +11,10 @@ else:
     _CONFIG_DIR = Path.home() / ".config" / "commitguard-webui"
 
 _API_KEY_FILE = _CONFIG_DIR / "api_key"
+_GITHUB_TOKEN_FILE = _CONFIG_DIR / "github_token"
 _CACHE_NOT_LOADED = object()
 _KEY_CACHE: str | None = _CACHE_NOT_LOADED
+_GITHUB_TOKEN_CACHE: str | None = _CACHE_NOT_LOADED
 
 
 def _ensure_config_dir() -> Path:
@@ -21,10 +23,34 @@ def _ensure_config_dir() -> Path:
     return _CONFIG_DIR
 
 
+def _write_secret_file(path: Path, value: str) -> None:
+    """Write a secret to a file with restricted permissions (0o600)."""
+    _ensure_config_dir()
+    path.write_text(value.strip(), encoding="utf-8")
+    try:
+        path.chmod(0o600)
+    except OSError:
+        pass  # Windows may not support chmod
+
+
+def _read_secret_file(path: Path) -> str | None:
+    """Read a secret from a file. Returns None if not present or empty."""
+    if not path.exists():
+        return None
+    value = path.read_text(encoding="utf-8").strip()
+    return value if value else None
+
+
 def _invalidate_key_cache() -> None:
-    """Invalidate the in-memory key cache after save/clear."""
+    """Invalidate the in-memory OpenRouter key cache after save/clear."""
     global _KEY_CACHE
     _KEY_CACHE = _CACHE_NOT_LOADED
+
+
+def _invalidate_github_token_cache() -> None:
+    """Invalidate the in-memory GitHub token cache after save/clear."""
+    global _GITHUB_TOKEN_CACHE
+    _GITHUB_TOKEN_CACHE = _CACHE_NOT_LOADED
 
 
 def save_api_key(key: str) -> None:
@@ -32,12 +58,7 @@ def save_api_key(key: str) -> None:
     Save API key to config file with restricted permissions (0o600).
     Invalidates the in-memory cache.
     """
-    _ensure_config_dir()
-    _API_KEY_FILE.write_text(key.strip(), encoding="utf-8")
-    try:
-        _API_KEY_FILE.chmod(0o600)
-    except OSError:
-        pass  # Windows may not support chmod
+    _write_secret_file(_API_KEY_FILE, key)
     _invalidate_key_cache()
 
 
@@ -49,11 +70,7 @@ def load_api_key() -> str | None:
     global _KEY_CACHE
     if _KEY_CACHE is not _CACHE_NOT_LOADED:
         return _KEY_CACHE
-    if not _API_KEY_FILE.exists():
-        _KEY_CACHE = None
-        return None
-    key = _API_KEY_FILE.read_text(encoding="utf-8").strip()
-    _KEY_CACHE = key if key else None
+    _KEY_CACHE = _read_secret_file(_API_KEY_FILE)
     return _KEY_CACHE
 
 
@@ -67,3 +84,36 @@ def clear_api_key() -> None:
     if _API_KEY_FILE.exists():
         _API_KEY_FILE.unlink()
     _invalidate_key_cache()
+
+
+# GitHub token management
+
+
+def save_github_token(token: str) -> None:
+    """Save GitHub personal access token with restricted permissions (0o600)."""
+    _write_secret_file(_GITHUB_TOKEN_FILE, token)
+    _invalidate_github_token_cache()
+
+
+def load_github_token() -> str | None:
+    """
+    Load GitHub token from config file. Returns None if not set.
+    Uses in-memory cache to avoid repeated file reads.
+    """
+    global _GITHUB_TOKEN_CACHE
+    if _GITHUB_TOKEN_CACHE is not _CACHE_NOT_LOADED:
+        return _GITHUB_TOKEN_CACHE
+    _GITHUB_TOKEN_CACHE = _read_secret_file(_GITHUB_TOKEN_FILE)
+    return _GITHUB_TOKEN_CACHE
+
+
+def has_saved_github_token() -> bool:
+    """Return True if a GitHub token is saved."""
+    return load_github_token() is not None
+
+
+def clear_github_token() -> None:
+    """Remove saved GitHub token. No-op if file does not exist."""
+    if _GITHUB_TOKEN_FILE.exists():
+        _GITHUB_TOKEN_FILE.unlink()
+    _invalidate_github_token_cache()

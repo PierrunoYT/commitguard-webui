@@ -19,15 +19,37 @@ from commitguard.analyzer import (
     list_commits,
     analyze_staged,
 )
-from config_store import clear_api_key, has_saved_key, load_api_key, save_api_key
+from commitguard.github_analyzer import (
+    GitHubError,
+    analyze_github_commit,
+    analyze_github_commit_range,
+    analyze_github_pr,
+    is_github_url,
+    list_github_commits,
+    list_github_prs,
+    parse_github_url,
+)
+from config_store import (
+    clear_api_key,
+    clear_github_token,
+    has_saved_key,
+    has_saved_github_token,
+    load_api_key,
+    load_github_token,
+    save_api_key,
+    save_github_token,
+)
 from diff_redactor import redact_diff
 
 OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
 UI_DIFF_CHAR_LIMIT = 150000
 
-# Min length for OpenRouter keys (sk-or-...); avoid storing junk
 _MIN_KEY_LEN = 20
 _MAX_KEY_LEN = 512
+
+# GitHub tokens can be classic (ghp_...) or fine-grained (github_pat_...)
+_MIN_GITHUB_TOKEN_LEN = 10
+_MAX_GITHUB_TOKEN_LEN = 512
 
 
 def _validate_api_key(key: str) -> str | None:
@@ -45,6 +67,18 @@ def _validate_api_key(key: str) -> str | None:
     return None
 
 
+def _validate_github_token(token: str) -> str | None:
+    """Validate GitHub token format. Returns None if valid, or an error message."""
+    t = token.strip()
+    if len(t) < _MIN_GITHUB_TOKEN_LEN:
+        return f"GitHub token too short (min {_MIN_GITHUB_TOKEN_LEN} characters)"
+    if len(t) > _MAX_GITHUB_TOKEN_LEN:
+        return f"GitHub token too long (max {_MAX_GITHUB_TOKEN_LEN} characters)"
+    if not t.isprintable() or "\n" in t or "\r" in t:
+        return "GitHub token contains invalid characters"
+    return None
+
+
 def _resolve_api_key(provided: str | None) -> str | None:
     """
     Resolve API key from: (1) provided value, (2) saved config file, (3) env var.
@@ -56,6 +90,19 @@ def _resolve_api_key(provided: str | None) -> str | None:
     if key:
         return key
     return os.environ.get("OPENROUTER_API_KEY") or None
+
+
+def _resolve_github_token(provided: str | None) -> str | None:
+    """
+    Resolve GitHub token from: (1) provided value, (2) saved config file, (3) env var.
+    Returns None if no token is available (anonymous access is still allowed).
+    """
+    if provided and provided.strip():
+        return provided.strip()
+    token = load_github_token()
+    if token:
+        return token
+    return os.environ.get("GITHUB_TOKEN") or None
 
 
 def _truncate_diff_for_ui(diff: str) -> tuple[str, bool]:
@@ -94,6 +141,7 @@ def _resolve_system_prompt(value: object) -> str | None:
         raise ValueError("system_prompt must be a string")
     return value
 
+
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
 
@@ -117,7 +165,7 @@ def index():
 
 @app.route("/api/analyze", methods=["POST"])
 def api_analyze():
-    """Analyze a specific commit."""
+    """Analyze a specific commit (local path or GitHub URL)."""
     data = request.get_json() or {}
     repo_path = data.get("repo_path", ".")
     ref = data.get("ref", "HEAD")
@@ -128,6 +176,40 @@ def api_analyze():
 
     if not api_key:
         return jsonify({"error": "OpenRouter API key required"}), 400
+
+    if is_github_url(repo_path):
+        github_token = _resolve_github_token(data.get("github_token"))
+        try:
+            owner, repo = parse_github_url(repo_path)
+            result, diff = analyze_github_commit(
+                owner,
+                repo,
+                ref,
+                token=github_token,
+                api_key=api_key,
+                model=model,
+                max_diff_chars=max_diff_chars,
+                system_prompt=system_prompt,
+            )
+            if data.get("include_diff", True):
+                diff = redact_diff(diff)
+                diff, diff_truncated = _truncate_diff_for_ui(diff)
+            else:
+                diff = ""
+                diff_truncated = False
+            return jsonify({"result": result, "diff": diff, "diff_truncated": diff_truncated})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except GitHubError as e:
+            return jsonify({"error": str(e)}), 400
+        except DiffTooLargeError as e:
+            return jsonify({"error": str(e)}), 413
+        except AIAnalysisError as e:
+            err = str(e) if app.debug else "AI analysis failed"
+            return jsonify({"error": err}), 502
+        except Exception as e:
+            err = str(e) if app.debug else "Analysis failed"
+            return jsonify({"error": err}), 400
 
     try:
         repo = get_repo_path(repo_path)
@@ -198,7 +280,7 @@ def api_models():
 
 @app.route("/api/analyze-range", methods=["POST"])
 def api_analyze_range():
-    """Analyze all commits in a range (e.g., HEAD~5..HEAD)."""
+    """Analyze all commits in a range (local path or GitHub URL)."""
     data = request.get_json() or {}
     repo_path = data.get("repo_path", ".")
     rev_range = (data.get("range") or "").strip()
@@ -211,7 +293,54 @@ def api_analyze_range():
     if not api_key:
         return jsonify({"error": "OpenRouter API key required"}), 400
     if not rev_range:
-        return jsonify({"error": "Commit range is required (example: HEAD~5..HEAD)"}), 400
+        return jsonify({"error": "Commit range is required (example: HEAD~5..HEAD or base..head)"}), 400
+
+    if is_github_url(repo_path):
+        github_token = _resolve_github_token(data.get("github_token"))
+        # Parse range: must be "base..head"
+        if ".." not in rev_range:
+            return jsonify({"error": "For GitHub repos, range must be base..head (e.g. main..feature-branch)"}), 400
+        base, head = rev_range.split("..", 1)
+        base, head = base.strip(), head.strip()
+        if not base or not head:
+            return jsonify({"error": "Range must have both base and head (e.g. main..feature-branch)"}), 400
+        try:
+            owner, repo = parse_github_url(repo_path)
+            analyses = analyze_github_commit_range(
+                owner,
+                repo,
+                base,
+                head,
+                token=github_token,
+                api_key=api_key,
+                model=model,
+                max_commits=max_commits,
+                max_diff_chars=max_diff_chars,
+                system_prompt=system_prompt,
+            )
+            if data.get("include_diff", True):
+                for item in analyses:
+                    redacted = redact_diff(item.get("diff", ""))
+                    redacted, truncated = _truncate_diff_for_ui(redacted)
+                    item["diff"] = redacted
+                    item["diff_truncated"] = truncated
+            else:
+                for item in analyses:
+                    item["diff"] = ""
+                    item["diff_truncated"] = False
+            return jsonify({"results": analyses, "count": len(analyses)})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except GitHubError as e:
+            return jsonify({"error": str(e)}), 400
+        except DiffTooLargeError as e:
+            return jsonify({"error": str(e)}), 413
+        except AIAnalysisError as e:
+            err = str(e) if app.debug else "AI analysis failed"
+            return jsonify({"error": err}), 502
+        except Exception as e:
+            err = str(e) if app.debug else "Analysis failed"
+            return jsonify({"error": err}), 400
 
     try:
         repo = get_repo_path(repo_path)
@@ -251,7 +380,7 @@ def api_analyze_range():
 
 @app.route("/api/commits", methods=["POST"])
 def api_commits():
-    """List recent commits for UI picker and search."""
+    """List recent commits for UI picker and search (local path or GitHub URL)."""
     data = request.get_json() or {}
     repo_path = data.get("repo_path", ".")
     search = (data.get("search") or "").strip()
@@ -259,6 +388,26 @@ def api_commits():
         limit = min(max(int(data.get("limit", 80)), 1), 200)
     except (TypeError, ValueError):
         return jsonify({"error": "limit must be an integer"}), 400
+
+    if is_github_url(repo_path):
+        github_token = _resolve_github_token(data.get("github_token"))
+        try:
+            owner, repo = parse_github_url(repo_path)
+            commits = list_github_commits(
+                owner,
+                repo,
+                token=github_token,
+                search=search,
+                limit=limit,
+            )
+            return jsonify({"commits": commits, "count": len(commits)})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except GitHubError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            err = str(e) if app.debug else "Could not load commits"
+            return jsonify({"error": err}), 400
 
     try:
         repo = get_repo_path(repo_path)
@@ -270,6 +419,102 @@ def api_commits():
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         err = str(e) if app.debug else "Could not load commits"
+        return jsonify({"error": err}), 400
+
+
+@app.route("/api/github/prs", methods=["POST"])
+def api_github_prs():
+    """List pull requests for a GitHub repository."""
+    data = request.get_json() or {}
+    repo_path = data.get("repo_path", "")
+    state = data.get("state", "open")
+    try:
+        limit = min(max(int(data.get("limit", 50)), 1), 100)
+    except (TypeError, ValueError):
+        return jsonify({"error": "limit must be an integer"}), 400
+
+    if not repo_path or not is_github_url(repo_path):
+        return jsonify({"error": "A valid GitHub repository URL is required"}), 400
+
+    if state not in ("open", "closed", "all"):
+        return jsonify({"error": "state must be open, closed, or all"}), 400
+
+    github_token = _resolve_github_token(data.get("github_token"))
+    try:
+        owner, repo = parse_github_url(repo_path)
+        prs = list_github_prs(owner, repo, token=github_token, state=state, limit=limit)
+        return jsonify({"prs": prs, "count": len(prs)})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except GitHubError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        err = str(e) if app.debug else "Could not load pull requests"
+        return jsonify({"error": err}), 400
+
+
+@app.route("/api/github/analyze-pr", methods=["POST"])
+def api_github_analyze_pr():
+    """Analyze a GitHub pull request."""
+    data = request.get_json() or {}
+    repo_path = data.get("repo_path", "")
+    pr_number_raw = data.get("pr_number")
+    api_key = _resolve_api_key(data.get("api_key"))
+    model = data.get("model", "openai/gpt-4o-mini")
+    max_diff_chars = _resolve_max_diff_chars(data.get("max_diff_chars"))
+    system_prompt = _resolve_system_prompt(data.get("system_prompt"))
+
+    if not api_key:
+        return jsonify({"error": "OpenRouter API key required"}), 400
+    if not repo_path or not is_github_url(repo_path):
+        return jsonify({"error": "A valid GitHub repository URL is required"}), 400
+    if pr_number_raw is None:
+        return jsonify({"error": "pr_number is required"}), 400
+
+    try:
+        pr_number = int(pr_number_raw)
+        if pr_number < 1:
+            raise ValueError
+    except (TypeError, ValueError):
+        return jsonify({"error": "pr_number must be a positive integer"}), 400
+
+    github_token = _resolve_github_token(data.get("github_token"))
+    try:
+        owner, repo = parse_github_url(repo_path)
+        result, diff, pr_title = analyze_github_pr(
+            owner,
+            repo,
+            pr_number,
+            token=github_token,
+            api_key=api_key,
+            model=model,
+            max_diff_chars=max_diff_chars,
+            system_prompt=system_prompt,
+        )
+        if data.get("include_diff", True):
+            diff = redact_diff(diff)
+            diff, diff_truncated = _truncate_diff_for_ui(diff)
+        else:
+            diff = ""
+            diff_truncated = False
+        return jsonify({
+            "result": result,
+            "diff": diff,
+            "diff_truncated": diff_truncated,
+            "pr_title": pr_title,
+            "pr_number": pr_number,
+        })
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except GitHubError as e:
+        return jsonify({"error": str(e)}), 400
+    except DiffTooLargeError as e:
+        return jsonify({"error": str(e)}), 413
+    except AIAnalysisError as e:
+        err = str(e) if app.debug else "AI analysis failed"
+        return jsonify({"error": err}), 502
+    except Exception as e:
+        err = str(e) if app.debug else "Analysis failed"
         return jsonify({"error": err}), 400
 
 
@@ -292,7 +537,7 @@ def api_settings_save_key():
     try:
         save_api_key(api_key)
         return jsonify({"ok": True})
-    except OSError as e:
+    except OSError:
         return jsonify({"error": "Could not save API key"}), 500
     except Exception:
         return jsonify({"error": "An error occurred"}), 500
@@ -308,9 +553,44 @@ def api_settings_clear_key():
         return jsonify({"error": "An error occurred"}), 500
 
 
+@app.route("/api/settings/github-token", methods=["GET"])
+def api_settings_github_token_status():
+    """Check if GitHub token is saved (never returns the token)."""
+    return jsonify({"configured": has_saved_github_token()})
+
+
+@app.route("/api/settings/github-token", methods=["POST"])
+def api_settings_save_github_token():
+    """Save GitHub personal access token to secure config file."""
+    data = request.get_json() or {}
+    token = (data.get("github_token") or "").strip()
+    if not token:
+        return jsonify({"error": "GitHub token is required"}), 400
+    err = _validate_github_token(token)
+    if err:
+        return jsonify({"error": err}), 400
+    try:
+        save_github_token(token)
+        return jsonify({"ok": True})
+    except OSError:
+        return jsonify({"error": "Could not save GitHub token"}), 500
+    except Exception:
+        return jsonify({"error": "An error occurred"}), 500
+
+
+@app.route("/api/settings/github-token", methods=["DELETE"])
+def api_settings_clear_github_token():
+    """Remove saved GitHub token."""
+    try:
+        clear_github_token()
+        return jsonify({"ok": True})
+    except Exception:
+        return jsonify({"error": "An error occurred"}), 500
+
+
 @app.route("/api/check", methods=["POST"])
 def api_check():
-    """Analyze staged changes."""
+    """Analyze staged changes (local repos only)."""
     data = request.get_json() or {}
     repo_path = data.get("repo_path", ".")
     api_key = _resolve_api_key(data.get("api_key"))
@@ -320,6 +600,9 @@ def api_check():
 
     if not api_key:
         return jsonify({"error": "OpenRouter API key required"}), 400
+
+    if is_github_url(repo_path):
+        return jsonify({"error": "Pre-commit check is only available for local repositories"}), 400
 
     try:
         repo = get_repo_path(repo_path)

@@ -31,8 +31,19 @@
                         <p class="hint">Leave empty to use saved key. Stored in your user config directory.</p>
                     </div>
                     <div class="field">
-                        <label for="repoPath">Repository Path</label>
-                        <input type="text" id="repoPath" placeholder="." value=".">
+                        <label for="githubToken">GitHub Token <span class="hint-inline">(optional)</span></label>
+                        <div class="key-row">
+                            <input type="password" id="githubToken" placeholder="ghp_... or github_pat_...">
+                            <span id="githubTokenStatus" class="key-status"></span>
+                            <button type="button" id="saveGithubTokenBtn" class="secondary">Save</button>
+                            <button type="button" id="clearGithubTokenBtn" class="secondary">Clear saved</button>
+                        </div>
+                        <p class="hint">Required for private repos and higher rate limits. Leave empty for public repo access.</p>
+                    </div>
+                    <div class="field">
+                        <label for="repoPath">Repository</label>
+                        <input type="text" id="repoPath" placeholder="Local path (.) or GitHub URL (https://github.com/owner/repo)" value=".">
+                        <p class="hint">Enter a local path like <code>.</code> or a GitHub URL like <code>https://github.com/owner/repo</code>. GitHub URLs enable remote analysis via the GitHub API.</p>
                     </div>
                     <div class="field">
                         <label for="model">Model</label>
@@ -82,12 +93,12 @@
                         <div class="field">
                             <label for="ref">Commit Ref</label>
                             <input type="text" id="ref" placeholder="HEAD" value="HEAD">
-                            <p class="hint">Use <code>HEAD</code>, <code>HEAD~5</code>, a hash, a range like <code>HEAD~5..HEAD</code>, or multiple refs like <code>abc123,def456</code>. Multi-commit results open in separate tabs.</p>
+                            <p class="hint">For local repos: <code>HEAD</code>, a hash, <code>HEAD~5..HEAD</code>, or multiple like <code>abc123,def456</code>. For GitHub: a full commit SHA.</p>
                         </div>
                         <div class="field">
                             <label for="rangeRef">Commit Range</label>
-                            <input type="text" id="rangeRef" placeholder="HEAD~5..HEAD">
-                            <p class="hint">Analyze a range directly (each commit appears in its own result tab).</p>
+                            <input type="text" id="rangeRef" placeholder="HEAD~5..HEAD (local) or main..feature-branch (GitHub)">
+                            <p class="hint">For local: <code>HEAD~5..HEAD</code>. For GitHub: <code>main..feature-branch</code> or two SHAs.</p>
                         </div>
                         <div class="button-row">
                             <button id="analyzeBtn">Analyze commit</button>
@@ -111,7 +122,22 @@
                             <div id="commitList" class="commit-list" role="listbox" aria-label="Commit picker"></div>
                         </div>
                     </div>
-                    <div class="action-group">
+                    <div class="action-group" id="prBrowserSection">
+                        <h3>Pull Request Browser <span class="github-badge">GitHub</span></h3>
+                        <div class="field">
+                            <div class="pr-controls-row">
+                                <select id="prStateFilter" class="secondary">
+                                    <option value="open">Open PRs</option>
+                                    <option value="closed">Closed PRs</option>
+                                    <option value="all">All PRs</option>
+                                </select>
+                                <button type="button" id="loadPrsBtn" class="secondary">Load PRs</button>
+                            </div>
+                            <p class="hint" id="prBrowserHint">Enter a GitHub URL in the Repository field to browse pull requests.</p>
+                            <div id="prList" class="commit-list" role="listbox" aria-label="Pull request picker"></div>
+                        </div>
+                    </div>
+                    <div class="action-group" id="precommitSection">
                         <h3>Pre-commit Check</h3>
                         <p class="hint">Analyze staged changes before committing</p>
                         <button id="checkBtn">Check Staged</button>
@@ -122,7 +148,7 @@
             <section class="panel output">
                 <div class="output-header">
                     <h3>Results Workspace</h3>
-                    <p class="hint">Each analyzed commit appears in its own tab.</p>
+                    <p class="hint">Each analyzed commit or PR appears in its own tab.</p>
                 </div>
                 <div id="resultTabs" class="result-tabs" hidden></div>
                 <div id="resultPanels" class="result-panels"></div>
