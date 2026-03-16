@@ -14,10 +14,12 @@ import { redactDiff } from "@/lib/diff-redactor";
 const UI_DIFF_CHAR_LIMIT = 150_000;
 
 export function resolveApiKey(provided?: string | null): string | null {
-  if (provided?.trim()) return provided.trim();
+  const fromProvided = provided?.trim();
+  if (fromProvided) return fromProvided;
   const key = loadApiKey();
-  if (key) return key;
-  return process.env.OPENROUTER_API_KEY || null;
+  if (key?.trim()) return key.trim();
+  const envKey = process.env.OPENROUTER_API_KEY?.trim();
+  return envKey || null;
 }
 
 export function resolveGithubToken(provided?: string | null): string | null {
