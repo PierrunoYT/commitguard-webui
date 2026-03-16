@@ -107,6 +107,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [prs, setPrs] = useState<Array<{ number: number; title: string; author: string; draft: boolean; base: string; head: string; updated_at: string }>>([]);
   const [prStateFilter, setPrStateFilter] = useState("open");
+  const [configExpanded, setConfigExpanded] = useState(false);
   const nextResultId = useRef(0);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -417,213 +418,70 @@ export default function Home() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div>
-          <h1>CommitGuard</h1>
-          <p className="tagline">AI-powered Git commit analysis</p>
+        <h1>CommitGuard</h1>
+        <div className="config-bar">
+          <div className="config-bar__group">
+            <label htmlFor="apiKey">API Key</label>
+            <div className="config-bar__input-row">
+              <input
+                type="password"
+                id="apiKey"
+                placeholder="sk-or-..."
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+              />
+              <span className={`key-status ${keySaved ? "saved" : "empty"}`}>{keySaved ? "✓" : ""}</span>
+              <button type="button" className="secondary compact" onClick={async () => { const key = apiKey.trim(); if (!key) { showError("Enter API key first."); return; } try { await api.settingsKey.save({ api_key: key }); setKeySaved(true); setApiKey(""); setResults([]); } catch (e) { showError(e instanceof Error ? e.message : "Failed"); } }}>Save</button>
+              <button type="button" className="secondary compact" onClick={async () => { try { await api.settingsKey.clear(); setKeySaved(false); setApiKey(""); setResults([]); } catch (e) { showError(e instanceof Error ? e.message : "Failed"); } }}>Clear</button>
+            </div>
+          </div>
+          <div className="config-bar__group">
+            <label htmlFor="githubToken">GitHub</label>
+            <div className="config-bar__input-row">
+              <input type="password" id="githubToken" placeholder="ghp_..." value={githubToken} onChange={(e) => setGithubToken(e.target.value)} />
+              <span className={`key-status ${githubTokenSaved ? "saved" : "empty"}`}>{githubTokenSaved ? "✓" : ""}</span>
+              <button type="button" className="secondary compact" onClick={async () => { const token = githubToken.trim(); if (!token) { showError("Enter token first."); return; } try { await api.settingsGithubToken.save({ github_token: token }); setGithubTokenSaved(true); setGithubToken(""); setResults([]); } catch (e) { showError(e instanceof Error ? e.message : "Failed"); } }}>Save</button>
+              <button type="button" className="secondary compact" onClick={async () => { try { await api.settingsGithubToken.clear(); setGithubTokenSaved(false); setGithubToken(""); setResults([]); } catch (e) { showError(e instanceof Error ? e.message : "Failed"); } }}>Clear</button>
+            </div>
+          </div>
+          <div className="config-bar__group">
+            <label htmlFor="repoPath">Repository</label>
+            <input type="text" id="repoPath" placeholder=". or github.com/owner/repo" value={repoPath} onChange={(e) => setRepoPath(e.target.value)} />
+          </div>
+          <div className="config-bar__group">
+            <label htmlFor="model">Model</label>
+            <div className="config-bar__model-row">
+              <div ref={modelDropdownRef} className={`custom-dropdown ${modelDropdownOpen ? "open" : ""}`}>
+                <button type="button" className="custom-dropdown__trigger" onClick={() => setModelDropdownOpen(!modelDropdownOpen)}>
+                  <span className="custom-dropdown__value">{modelDisplay}</span>
+                  <span className="custom-dropdown__arrow" aria-hidden>▼</span>
+                </button>
+                <div className="custom-dropdown__panel" hidden={!modelDropdownOpen} role="listbox">
+                  {models.length === 0 ? <div className="custom-dropdown__option selected" data-value="openai/gpt-4o-mini">GPT-4o Mini (default)</div> : models.map((m) => (
+                    <div key={m.id} className={`custom-dropdown__option ${model === m.id ? "selected" : ""}`} data-value={m.id} role="option" onClick={() => { setModel(m.id); setModelDisplay(getModelDisplayName(m)); setModelDropdownOpen(false); }}>{getModelDisplayName(m)}</div>
+                  ))}
+                </div>
+              </div>
+              <button type="button" className="secondary compact" onClick={handleLoadModels}>Load</button>
+            </div>
+          </div>
+          <button type="button" className={`config-expand-btn ${configExpanded ? "expanded" : ""}`} onClick={() => setConfigExpanded(!configExpanded)}>
+            {configExpanded ? "▲ Advanced" : "▼ Advanced"}
+          </button>
         </div>
-        <p className="header-hint">Select commits on the left, review results on the right.</p>
+        {configExpanded && (
+          <div className="config-advanced">
+            <label className="checkbox-label"><input type="checkbox" checked={includeDiff} onChange={(e) => setIncludeDiff(e.target.checked)} />Include diff</label>
+            <div className="config-advanced__field"><label htmlFor="maxDiffChars">Max diff chars</label><input type="number" id="maxDiffChars" min={1} value={maxDiffChars} onChange={(e) => setMaxDiffChars(e.target.value)} placeholder={String(DEFAULT_MAX_DIFF_CHARS)} /></div>
+            <div className="config-advanced__field config-advanced__prompt"><label htmlFor="systemPrompt">System prompt</label><textarea id="systemPrompt" rows={4} value={systemPrompt} onChange={(e) => setSystemPrompt(e.target.value)} /></div>
+          </div>
+        )}
       </header>
 
       <main className="app-layout">
         <aside className="control-column">
-          <section className="panel config">
-            <h3>Configuration</h3>
-            <div className="field">
-              <label htmlFor="apiKey">OpenRouter API Key</label>
-              <div className="key-row">
-                <input
-                  type="password"
-                  id="apiKey"
-                  placeholder="sk-or-..."
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                />
-                <span className={`key-status ${keySaved ? "saved" : "empty"}`}>{keySaved ? "Saved" : ""}</span>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={async () => {
-                    const key = apiKey.trim();
-                    if (!key) {
-                      showError("Enter your API key first, then click Save.");
-                      return;
-                    }
-                    try {
-                      await api.settingsKey.save({ api_key: key });
-                      setKeySaved(true);
-                      setApiKey("");
-                      setResults([]);
-                    } catch (e) {
-                      showError(e instanceof Error ? e.message : "Failed");
-                    }
-                  }}
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={async () => {
-                    try {
-                      await api.settingsKey.clear();
-                      setKeySaved(false);
-                      setApiKey("");
-                      setResults([]);
-                    } catch (e) {
-                      showError(e instanceof Error ? e.message : "Failed");
-                    }
-                  }}
-                >
-                  Clear saved
-                </button>
-              </div>
-              <p className="hint">Leave empty to use saved key. Stored in your user config directory.</p>
-            </div>
-            <div className="field">
-              <label htmlFor="githubToken">GitHub Token <span className="hint-inline">(optional)</span></label>
-              <div className="key-row">
-                <input
-                  type="password"
-                  id="githubToken"
-                  placeholder="ghp_... or github_pat_..."
-                  value={githubToken}
-                  onChange={(e) => setGithubToken(e.target.value)}
-                />
-                <span className={`key-status ${githubTokenSaved ? "saved" : "empty"}`}>
-                  {githubTokenSaved ? "Saved" : ""}
-                </span>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={async () => {
-                    const token = githubToken.trim();
-                    if (!token) {
-                      showError("Enter your GitHub token first, then click Save.");
-                      return;
-                    }
-                    try {
-                      await api.settingsGithubToken.save({ github_token: token });
-                      setGithubTokenSaved(true);
-                      setGithubToken("");
-                      setResults([]);
-                    } catch (e) {
-                      showError(e instanceof Error ? e.message : "Failed");
-                    }
-                  }}
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={async () => {
-                    try {
-                      await api.settingsGithubToken.clear();
-                      setGithubTokenSaved(false);
-                      setGithubToken("");
-                      setResults([]);
-                    } catch (e) {
-                      showError(e instanceof Error ? e.message : "Failed");
-                    }
-                  }}
-                >
-                  Clear saved
-                </button>
-              </div>
-              <p className="hint">Required for private repos and higher rate limits. Leave empty for public repo access.</p>
-            </div>
-            <div className="field">
-              <label htmlFor="repoPath">Repository</label>
-              <input
-                type="text"
-                id="repoPath"
-                placeholder="Local path (.) or GitHub URL"
-                value={repoPath}
-                onChange={(e) => setRepoPath(e.target.value)}
-              />
-              <p className="hint">
-                Enter a local path like <code>.</code> or a GitHub URL like{" "}
-                <code>https://github.com/owner/repo</code>.
-              </p>
-            </div>
-            <div className="field">
-              <label htmlFor="model">Model</label>
-              <div className="model-row">
-                <div ref={modelDropdownRef} className={`custom-dropdown ${modelDropdownOpen ? "open" : ""}`}>
-                  <button
-                    type="button"
-                    className="custom-dropdown__trigger"
-                    onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-                  >
-                    <span className="custom-dropdown__value">{modelDisplay}</span>
-                    <span className="custom-dropdown__arrow" aria-hidden>▼</span>
-                  </button>
-                  <div
-                    className="custom-dropdown__panel"
-                    hidden={!modelDropdownOpen}
-                    role="listbox"
-                  >
-                    {models.length === 0 ? (
-                      <div className="custom-dropdown__option selected" data-value="openai/gpt-4o-mini">
-                        GPT-4o Mini (default)
-                      </div>
-                    ) : (
-                      models.map((m) => (
-                        <div
-                          key={m.id}
-                          className={`custom-dropdown__option ${model === m.id ? "selected" : ""}`}
-                          data-value={m.id}
-                          role="option"
-                          onClick={() => {
-                            setModel(m.id);
-                            setModelDisplay(getModelDisplayName(m));
-                            setModelDropdownOpen(false);
-                          }}
-                        >
-                          {getModelDisplayName(m)}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-                <button type="button" className="secondary" onClick={handleLoadModels}>
-                  Load models
-                </button>
-              </div>
-            </div>
-            <div className="field">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={includeDiff}
-                  onChange={(e) => setIncludeDiff(e.target.checked)}
-                />
-                Include diff in response
-              </label>
-            </div>
-            <div className="field">
-              <label htmlFor="maxDiffChars">Max Diff Characters (AI input)</label>
-              <input
-                type="number"
-                id="maxDiffChars"
-                min={1}
-                value={maxDiffChars}
-                onChange={(e) => setMaxDiffChars(e.target.value)}
-                placeholder={String(DEFAULT_MAX_DIFF_CHARS)}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="systemPrompt">System Prompt</label>
-              <textarea
-                id="systemPrompt"
-                rows={9}
-                value={systemPrompt}
-                onChange={(e) => setSystemPrompt(e.target.value)}
-              />
-            </div>
-          </section>
-
-          <section className="panel actions">
+          <section className="panel actions compact-panel">
+            <div className="actions-inner">
             <div className="action-group">
               <h3>Analyze Commit</h3>
               <div className="field">
@@ -780,36 +638,37 @@ export default function Home() {
                 </button>
               </div>
             )}
+            </div>
           </section>
         </aside>
 
         <section className="panel output">
           <div className="output-header">
-            <h3>Results Workspace</h3>
-            <p className="hint">Each analyzed commit or PR appears in its own tab.</p>
+            <h3>Results</h3>
           </div>
-          {loading && (
-            <section className="result-panel">
-              <h4 className="result-panel__title">{loadingMessage}</h4>
-            </section>
-          )}
-          {results.length > 0 && (
-            <>
-              <div className="result-tabs">
-                {results.map((entry) => (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    className={`result-tab ${activeResultId === entry.id ? "active" : ""}`}
-                    data-target={entry.id}
-                    onClick={() => setActiveResultId(entry.id)}
-                  >
-                    {entry.tabLabel}
-                  </button>
-                ))}
-              </div>
-              <div className="result-panels">
-                {results.map((entry) => (
+          <div className="output-body">
+            {loading && (
+              <section className="result-panel">
+                <h4 className="result-panel__title">{loadingMessage}</h4>
+              </section>
+            )}
+            {results.length > 0 && !loading && (
+              <>
+                <div className="result-tabs">
+                  {results.map((entry) => (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      className={`result-tab ${activeResultId === entry.id ? "active" : ""}`}
+                      data-target={entry.id}
+                      onClick={() => setActiveResultId(entry.id)}
+                    >
+                      {entry.tabLabel}
+                    </button>
+                  ))}
+                </div>
+                <div className="result-panels">
+                  {results.map((entry) => (
                     <section
                       key={entry.id}
                       className="result-panel"
@@ -836,15 +695,16 @@ export default function Home() {
                         </div>
                       )}
                     </section>
-                ))}
+                  ))}
+                </div>
+              </>
+            )}
+            {!loading && results.length === 0 && !error && (
+              <div className="result-panels-empty">
+                Run an analysis to see results...
               </div>
-            </>
-          )}
-          {!loading && results.length === 0 && !error && (
-            <div className="result-panels-empty">
-              Run an analysis to see results...
-            </div>
-          )}
+            )}
+          </div>
           {error && (
             <div className="error-box">{error}</div>
           )}
