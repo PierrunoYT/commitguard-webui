@@ -133,7 +133,7 @@ See [OpenRouter models](https://openrouter.ai/models) for the full list.
 
 | Error | Solution |
 |-------|----------|
-| Invalid or missing API key | Set `OPENROUTER_API_KEY` or use `--api-key`. Get a key at [openrouter.ai/keys](https://openrouter.ai/keys) |
+| Invalid or missing API key | Save your key in the UI or set `OPENROUTER_API_KEY`. Get a key at [openrouter.ai/keys](https://openrouter.ai/keys) |
 | Model not found | Use the full model ID (e.g. `openai/gpt-4o-mini`). Check [openrouter.ai/models](https://openrouter.ai/models) |
 | Rate limit exceeded | Wait and retry, or switch to a different model |
 | Service unavailable | OpenRouter may be down; try again later |
