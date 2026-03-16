@@ -845,6 +845,18 @@ button:disabled {
   letter-spacing: 0.05em;
 }
 
+.result-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.result-panel__header .result-panel__title {
+  margin: 0;
+}
+
 .result-box {
   background: transparent;
   border: 0;

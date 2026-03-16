@@ -63,6 +63,15 @@ function formatCommitDate(dateIso: string): string {
   return d.toLocaleString();
 }
 
+function toSafeFilename(input: string): string {
+  return (input || "result")
+    .toLowerCase()
+    .replace(/[^a-z0-9\-_. ]+/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .slice(0, 80) || "result";
+}
+
 function isCommitRange(input: string): boolean {
   return typeof input === "string" && input.includes("..");
 }
@@ -182,9 +191,16 @@ export default function Home() {
   }, [refreshKeyStatus, refreshGithubTokenStatus]);
 
   const loadCommits = useCallback(async () => {
+    const repo = repoPath.trim();
+    if (!repo || repo === "..") {
+      setCommits([]);
+      setSelectedRefs(new Set());
+      setError("");
+      return;
+    }
     try {
       const data = await api.commits({
-        repo_path: repoPath.trim() || ".",
+        repo_path: repo,
         github_token: githubToken.trim() || undefined,
         search: commitSearch.trim() || undefined,
         limit: 120,
@@ -504,6 +520,34 @@ export default function Home() {
     setMaxDiffChars(String(clamped));
   }, []);
 
+  const handleExportResultMarkdown = useCallback((entry: ResultEntry) => {
+    const mdParts = [
+      `# ${entry.title}`,
+      "",
+      "## Review",
+      entry.result?.trim() || "_No review content._",
+      "",
+    ];
+    if (entry.diff) {
+      mdParts.push("## Diff", "");
+      if (entry.truncated) {
+        mdParts.push("> Note: Diff output was truncated in the UI.", "");
+      }
+      mdParts.push("```diff", entry.diff, "```", "");
+    }
+    const content = mdParts.join("\n");
+    const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const filename = `${toSafeFilename(entry.tabLabel || entry.title)}.md`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, []);
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -788,7 +832,12 @@ export default function Home() {
                       id={entry.id}
                       hidden={activeResultId !== entry.id}
                     >
-                      <h4 className="result-panel__title">{entry.title}</h4>
+                      <div className="result-panel__header">
+                        <h4 className="result-panel__title">{entry.title}</h4>
+                        <button type="button" className="secondary compact" onClick={() => handleExportResultMarkdown(entry)}>
+                          Export Markdown
+                        </button>
+                      </div>
                       <div
                         className="result-box"
                         dangerouslySetInnerHTML={{ __html: renderMarkdown(entry.result) }}
