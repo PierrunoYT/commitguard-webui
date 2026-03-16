@@ -87,7 +87,7 @@ export default function Home() {
   const [keySaved, setKeySaved] = useState(false);
   const [githubToken, setGithubToken] = useState("");
   const [githubTokenSaved, setGithubTokenSaved] = useState(false);
-  const [repoPath, setRepoPath] = useState(".");
+  const [repoPath, setRepoPath] = useState("..");
   const [model, setModel] = useState("openai/gpt-4o-mini");
   const [modelDisplay, setModelDisplay] = useState("GPT-4o Mini (default)");
   const [models, setModels] = useState<Array<{ id: string; name?: string }>>([]);
