@@ -1,36 +1,27 @@
-# CommitGuard Web UI (Next.js)
+# CommitGuard Web UI
 
-Next.js frontend for CommitGuard, ported from the Flask/HTML template.
+Next.js full-stack app for AI-powered Git commit analysis.
 
 ## Setup
-
-1. Install dependencies:
 
 ```bash
 npm install
 ```
 
-2. Start the **Flask backend** (from the project root):
-
-```bash
-cd ..
-python -m flask --app app run
-# or: python app.py
-```
-
-The Flask app runs on `http://localhost:5000` and provides the `/api/*` endpoints.
-
-3. Start the Next.js dev server:
+## Development
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). API requests are proxied to the Flask backend via `next.config.ts` rewrites.
+Open [http://localhost:3000](http://localhost:3000).
 
-## Configuration
+## Build
 
-- **NEXT_PUBLIC_API_URL**: When the Flask backend runs on a different URL, set this (e.g. `http://localhost:5000`). Defaults to `http://localhost:5000` for rewrites.
+```bash
+npm run build
+npm start
+```
 
 ## Features
 
