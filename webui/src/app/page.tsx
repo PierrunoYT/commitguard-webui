@@ -591,7 +591,10 @@ export default function Home() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>CommitGuard</h1>
+        <div className="config-bar__group">
+          <span className="config-bar__group-label-spacer" aria-hidden>&nbsp;</span>
+          <h1>CommitGuard</h1>
+        </div>
         <div className="config-bar">
           <div className="config-bar__group">
             <label htmlFor="apiKey">API Key</label>
