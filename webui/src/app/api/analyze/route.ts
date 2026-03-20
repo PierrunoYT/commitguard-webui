@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   const repoPath = (data.repo_path as string) || ".";
   const ref = (data.ref as string) || "HEAD";
   const apiKey = resolveApiKey(data.api_key as string);
-  const model = (data.model as string) || "openai/gpt-4o-mini";
+  const model = (data.model as string) || "anthropic/claude-sonnet-4-5-latest";
   const maxDiffChars = resolveMaxDiffChars(data.max_diff_chars);
   const systemPrompt = resolveSystemPrompt(data.system_prompt);
   const includeDiff = data.include_diff !== false;

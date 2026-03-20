@@ -116,8 +116,8 @@ export default function Home() {
   const [githubToken, setGithubToken] = useState("");
   const [githubTokenSaved, setGithubTokenSaved] = useState(false);
   const [repoPath, setRepoPath] = useState("..");
-  const [model, setModel] = useState("openai/gpt-4o-mini");
-  const [modelDisplay, setModelDisplay] = useState("GPT-4o Mini (default)");
+  const [model, setModel] = useState("anthropic/claude-sonnet-4-5-latest");
+  const [modelDisplay, setModelDisplay] = useState("Claude Sonnet 4.5 (default)");
   const [models, setModels] = useState<Array<{ id: string; name?: string }>>([]);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [modelSearch, setModelSearch] = useState("");
@@ -147,8 +147,8 @@ export default function Home() {
         setModelSearch("");
       }
     };
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [modelDropdownOpen]);
 
   const filteredModels = models.length === 0 ? [] : models.filter((m) => {
@@ -634,7 +634,14 @@ export default function Home() {
             <label htmlFor="model">Model</label>
             <div className="config-bar__model-row">
               <div ref={modelDropdownRef} className={`custom-dropdown ${modelDropdownOpen ? "open" : ""}`}>
-                <button type="button" className="custom-dropdown__trigger" onClick={() => setModelDropdownOpen(!modelDropdownOpen)}>
+                <button
+                  type="button"
+                  className="custom-dropdown__trigger"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setModelDropdownOpen((prev) => !prev);
+                  }}
+                >
                   <span className="custom-dropdown__value">{modelDisplay}</span>
                   <span className="custom-dropdown__arrow" aria-hidden>▼</span>
                 </button>
@@ -652,7 +659,19 @@ export default function Home() {
                     </div>
                   )}
                   {models.length === 0 ? (
-                    <div className="custom-dropdown__option selected" data-value="openai/gpt-4o-mini">GPT-4o Mini (default)</div>
+                    <div
+                      className="custom-dropdown__option selected"
+                      data-value="anthropic/claude-sonnet-4-5-latest"
+                      role="option"
+                      onClick={() => {
+                        setModel("anthropic/claude-sonnet-4-5-latest");
+                        setModelDisplay("Claude Sonnet 4.5 (default)");
+                        setModelDropdownOpen(false);
+                        setModelSearch("");
+                      }}
+                    >
+                      Claude Sonnet 4.5 (default)
+                    </div>
                   ) : filteredModels.length === 0 ? (
                     <div className="custom-dropdown__option custom-dropdown__option--empty">No models match &quot;{modelSearch}&quot;</div>
                   ) : (

@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   const repoPath = (data.repo_path as string) || ".";
   const revRange = ((data.range as string) || "").trim();
   const apiKey = resolveApiKey(data.api_key as string);
-  const model = (data.model as string) || "openai/gpt-4o-mini";
+  const model = (data.model as string) || "anthropic/claude-sonnet-4-5-latest";
   const maxCommits = Math.min(Math.max(Number(data.max_commits) || 20, 1), 50);
   const maxDiffChars = resolveMaxDiffChars(data.max_diff_chars);
   const systemPrompt = resolveSystemPrompt(data.system_prompt);
