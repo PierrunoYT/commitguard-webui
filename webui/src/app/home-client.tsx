@@ -699,6 +699,19 @@ export default function CommitGuardClient() {
     }
   }, [activeResultId, results, showError]);
 
+  const handleCloseResult = useCallback((id: string) => {
+    setResults((prev) => {
+      const filtered = prev.filter((r) => r.id !== id);
+      // If we closed the active tab, switch to another one
+      if (activeResultId === id && filtered.length > 0) {
+        setActiveResultId(filtered[filtered.length - 1].id);
+      } else if (filtered.length === 0) {
+        setActiveResultId(null);
+      }
+      return filtered;
+    });
+  }, [activeResultId]);
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -1056,15 +1069,27 @@ export default function CommitGuardClient() {
               <>
                 <div className="result-tabs">
                   {results.map((entry) => (
-                    <button
-                      key={entry.id}
-                      type="button"
-                      className={`result-tab ${activeResultId === entry.id ? "active" : ""}`}
-                      data-target={entry.id}
-                      onClick={() => setActiveResultId(entry.id)}
-                    >
-                      {entry.tabLabel}
-                    </button>
+                    <div key={entry.id} className="result-tab-wrapper">
+                      <button
+                        type="button"
+                        className={`result-tab ${activeResultId === entry.id ? "active" : ""}`}
+                        data-target={entry.id}
+                        onClick={() => setActiveResultId(entry.id)}
+                      >
+                        {entry.tabLabel}
+                      </button>
+                      <button
+                        type="button"
+                        className="result-tab-close"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCloseResult(entry.id);
+                        }}
+                        title="Close this result"
+                      >
+                        ×
+                      </button>
+                    </div>
                   ))}
                 </div>
                 <div className="result-panels">
