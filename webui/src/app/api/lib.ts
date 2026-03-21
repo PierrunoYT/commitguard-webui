@@ -11,7 +11,29 @@ import {
 import { GitHubError } from "@/lib/github-analyzer";
 import { redactDiff } from "@/lib/diff-redactor";
 
-const UI_DIFF_CHAR_LIMIT = 150_000;
+const DEFAULT_MODEL = "anthropic/claude-sonnet-4.5";
+
+// Legacy model IDs that need to be migrated
+const LEGACY_MODEL_MAPPING: Record<string, string> = {
+  "anthropic/claude-sonnet-4-5-latest": "anthropic/claude-sonnet-4.5",
+  "anthropic/claude-sonnet-4-5": "anthropic/claude-sonnet-4.5",
+};
+
+export function resolveModel(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) {
+    return DEFAULT_MODEL;
+  }
+  
+  const trimmed = value.trim();
+  
+  // Check if it's a legacy model ID and migrate it
+  if (LEGACY_MODEL_MAPPING[trimmed]) {
+    console.log(`[Model Migration] Converting "${trimmed}" to "${LEGACY_MODEL_MAPPING[trimmed]}"`);
+    return LEGACY_MODEL_MAPPING[trimmed];
+  }
+  
+  return trimmed;
+}
 
 export function resolveApiKey(provided?: string | null): string | null {
   const fromProvided = provided?.trim();

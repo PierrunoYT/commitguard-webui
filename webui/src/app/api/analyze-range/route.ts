@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import {
   resolveApiKey,
   resolveGithubToken,
+  resolveModel,
   truncateDiffForUi,
   resolveMaxDiffChars,
   resolveSystemPrompt,
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
   const repoPath = (data.repo_path as string) || ".";
   const revRange = ((data.range as string) || "").trim();
   const apiKey = resolveApiKey(data.api_key as string);
-  const model = (data.model as string) || "anthropic/claude-sonnet-4.5";
+  const model = resolveModel(data.model);
   const maxCommits = Math.min(Math.max(Number(data.max_commits) || 20, 1), 50);
   const maxDiffChars = resolveMaxDiffChars(data.max_diff_chars);
   const systemPrompt = resolveSystemPrompt(data.system_prompt);
