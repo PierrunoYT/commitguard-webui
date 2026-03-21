@@ -201,7 +201,8 @@ export async function analyzeCommitRange(
   const git: SimpleGit = simpleGit(repoPath);
   let commits: string[];
   try {
-    const log = await git.log({ from: revRange, maxCount: maxCommits });
+    // Use array syntax to pass the range directly to git log
+    const log = await git.log([revRange, "--max-count", String(maxCommits)]);
     commits = log.all.map((c) => c.hash);
     if (!commits.length) {
       throw new GitAnalysisError(`No commits found in range '${revRange}'`);
