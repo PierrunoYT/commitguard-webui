@@ -879,6 +879,28 @@ button:disabled {
   margin: 0;
 }
 
+.result-panel__disclaimer {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.result-panel__disclaimer .disclaimer-icon {
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+
+.result-panel__disclaimer .disclaimer-text {
+  line-height: 1.5;
+}
+
 .result-box {
   background: transparent;
   border: 0;

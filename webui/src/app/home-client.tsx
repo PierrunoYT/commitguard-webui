@@ -1081,6 +1081,13 @@ export default function CommitGuardClient() {
                           Export Markdown
                         </button>
                       </div>
+                      <div className="result-panel__disclaimer">
+                        <span className="disclaimer-icon">⚠️</span>
+                        <span className="disclaimer-text">
+                          AI-generated review. Verify all suggestions before implementing. 
+                          Automated tools may occasionally misinterpret commits or mix up commit hashes.
+                        </span>
+                      </div>
                       <div
                         className="result-box"
                         dangerouslySetInnerHTML={{ __html: renderMarkdown(entry.result) }}
