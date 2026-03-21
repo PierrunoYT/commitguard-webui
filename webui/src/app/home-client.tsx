@@ -150,6 +150,12 @@ export default function CommitGuardClient() {
 
   const MASKED_VALUE = "********"; // 8 asterisks - ASCII only
 
+  // Helper to sanitize secret values - returns undefined if masked or empty
+  const sanitizeSecret = useCallback((value: string): string | undefined => {
+    const trimmed = value.trim();
+    return (trimmed && trimmed !== MASKED_VALUE) ? trimmed : undefined;
+  }, []);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (modelDropdownOpen && modelDropdownRef.current && !modelDropdownRef.current.contains(e.target as Node)) {
@@ -182,8 +188,8 @@ export default function CommitGuardClient() {
         }
       }
       return {
-        api_key: (apiKey.trim() && apiKey !== MASKED_VALUE) ? apiKey.trim() : undefined,
-        github_token: (githubToken.trim() && githubToken !== MASKED_VALUE) ? githubToken.trim() : undefined,
+        api_key: sanitizeSecret(apiKey),
+        github_token: sanitizeSecret(githubToken),
         repo_path: repoPath.trim() || ".",
         model,
         include_diff: includeDiff,
@@ -192,7 +198,7 @@ export default function CommitGuardClient() {
         ...extra,
       };
     },
-    [apiKey, githubToken, repoPath, model, includeDiff, maxDiffChars, systemPrompt]
+    [apiKey, githubToken, repoPath, model, includeDiff, maxDiffChars, systemPrompt, sanitizeSecret]
   );
 
   const refreshKeyStatus = useCallback(async () => {
@@ -545,7 +551,7 @@ export default function CommitGuardClient() {
 
   const handleLoadModels = useCallback(async () => {
     try {
-      const { models: m } = await api.models({ api_key: (apiKey.trim() && apiKey !== MASKED_VALUE) ? apiKey.trim() : undefined });
+      const { models: m } = await api.models({ api_key: sanitizeSecret(apiKey) });
       const unique = new Map<string, { id: string; name?: string }>();
       for (const model of m || []) {
         if (!model?.id || unique.has(model.id)) continue;
@@ -564,7 +570,7 @@ export default function CommitGuardClient() {
     } catch (e) {
       showError(e instanceof Error ? e.message : "Failed to load models");
     }
-  }, [apiKey, model, showError]);
+  }, [apiKey, model, showError, sanitizeSecret]);
 
   const toggleSelectedRef = (r: string) => {
     setSelectedRefs((prev) => {
