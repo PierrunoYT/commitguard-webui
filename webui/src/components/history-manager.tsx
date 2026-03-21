@@ -101,6 +101,9 @@ export function HistoryManager({ onSelectRecord }: HistoryManagerProps) {
     // Temporarily close the modal so the file picker is visible
     setShowSetup(false);
     
+    // Small delay to ensure modal closes before picker opens
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     const result = await historyStorage.selectFolder();
     
     setIsSelectingFolder(false);
