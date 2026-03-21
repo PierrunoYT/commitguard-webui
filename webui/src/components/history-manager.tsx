@@ -266,7 +266,7 @@ export function HistoryManager({ onSelectRecord }: HistoryManagerProps) {
                 className="w-full px-4 py-3 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded text-left transition-colors"
               >
                 <div className="font-medium">Use Browser Storage</div>
-                <div className="text-sm text-gray-400 mt-1">
+                <div className="text-sm text-white mt-1">
                   Data stored in browser. Will be lost if you clear browser data.
                 </div>
               </button>
