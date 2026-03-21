@@ -22,6 +22,7 @@ export function HistoryManager({ onSelectRecord }: HistoryManagerProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
   const [isChangingStorage, setIsChangingStorage] = useState(false);
+  const [isSelectingFolder, setIsSelectingFolder] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const { ConfirmDialog, confirm } = useConfirmDialog();
@@ -95,12 +96,33 @@ export function HistoryManager({ onSelectRecord }: HistoryManagerProps) {
   };
 
   const handleSetupStorage = async () => {
-    const success = await historyStorage.selectFolder();
-    if (success) {
-      setShowSetup(false);
+    setIsSelectingFolder(true);
+    
+    // Temporarily close the modal so the file picker is visible
+    setShowSetup(false);
+    
+    const result = await historyStorage.selectFolder();
+    
+    setIsSelectingFolder(false);
+    
+    if (result.cancelled) {
+      // User cancelled the picker - reopen the modal
+      setShowSetup(true);
+      return;
+    }
+    
+    if (result.success) {
       setIsChangingStorage(false);
       await loadStorageInfo();
       await loadRecords();
+    } else {
+      // Show error if fallback to IndexedDB failed or other error
+      const errorMsg = result.error || "Failed to set up file system storage";
+      alert(`Could not use file system storage: ${errorMsg}\nFalling back to browser storage.`);
+      
+      // Close setup mode
+      setIsChangingStorage(false);
+      await loadStorageInfo();
     }
   };
 
@@ -249,11 +271,23 @@ export function HistoryManager({ onSelectRecord }: HistoryManagerProps) {
 
               <button
                 onClick={handleSetupStorage}
-                className="w-full px-4 py-3 bg-green-600 hover:bg-green-500 text-white rounded text-left transition-colors"
+                disabled={isSelectingFolder}
+                className="w-full px-4 py-3 bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded text-left transition-colors"
               >
-                <div className="font-medium">Save to File System (Recommended)</div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Save to File System (Recommended)</span>
+                  {isSelectingFolder && (
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  )}
+                </div>
                 <div className="text-sm text-green-100 mt-1">
-                  Choose a folder on your computer. Data persists even if browser data is cleared.
+                  {isSelectingFolder 
+                    ? "Opening folder picker..." 
+                    : "Choose a folder on your computer. Data persists even if browser data is cleared."
+                  }
                 </div>
               </button>
 

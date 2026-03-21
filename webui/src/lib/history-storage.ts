@@ -64,10 +64,11 @@ class FileSystemStorage {
   }
 
   // Request user to select a folder
-  async selectFolder(): Promise<boolean> {
+  async selectFolder(): Promise<{ success: boolean; cancelled?: boolean; error?: string }> {
     if (!this.useFileSystem) {
       console.log("File System Access API not supported, using IndexedDB");
-      return this.initIndexedDB();
+      const success = await this.initIndexedDB();
+      return { success };
     }
 
     try {
@@ -93,12 +94,18 @@ class FileSystemStorage {
       // Save permission state
       await this.savePermissionState();
       
-      return true;
+      return { success: true };
     } catch (error) {
+      // Check if user cancelled the picker
+      if (error instanceof Error && error.name === "AbortError") {
+        return { success: false, cancelled: true };
+      }
+      
       console.error("Failed to select folder:", error);
-      // Fallback to IndexedDB
+      // Fallback to IndexedDB for other errors
       this.useFileSystem = false;
-      return this.initIndexedDB();
+      const success = await this.initIndexedDB();
+      return { success, error: error instanceof Error ? error.message : "Failed to access file system" };
     }
   }
 
