@@ -570,7 +570,7 @@ export default function CommitGuardClient() {
   const selectAllCommits = () => setSelectedRefs(new Set(commits.map((c) => c.ref)));
   const clearCommitSelection = () => setSelectedRefs(new Set());
 
-  const MASKED_VALUE = "••••••••";
+  const MASKED_VALUE = "********"; // 8 asterisks - ASCII only
 
   const handleSaveApiKey = useCallback(async () => {
     const key = apiKey.trim();
