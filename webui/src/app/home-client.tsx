@@ -182,8 +182,8 @@ export default function CommitGuardClient() {
         }
       }
       return {
-        api_key: apiKey.trim() || undefined,
-        github_token: githubToken.trim() || undefined,
+        api_key: (apiKey.trim() && apiKey !== MASKED_VALUE) ? apiKey.trim() : undefined,
+        github_token: (githubToken.trim() && githubToken !== MASKED_VALUE) ? githubToken.trim() : undefined,
         repo_path: repoPath.trim() || ".",
         model,
         include_diff: includeDiff,
@@ -545,7 +545,7 @@ export default function CommitGuardClient() {
 
   const handleLoadModels = useCallback(async () => {
     try {
-      const { models: m } = await api.models({ api_key: apiKey.trim() || undefined });
+      const { models: m } = await api.models({ api_key: (apiKey.trim() && apiKey !== MASKED_VALUE) ? apiKey.trim() : undefined });
       const unique = new Map<string, { id: string; name?: string }>();
       for (const model of m || []) {
         if (!model?.id || unique.has(model.id)) continue;
