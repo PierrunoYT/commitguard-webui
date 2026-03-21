@@ -197,19 +197,25 @@ export default function CommitGuardClient() {
     try {
       const { configured } = await api.settingsKey.get();
       setKeySaved(configured);
+      if (configured) {
+        setApiKey(MASKED_VALUE);
+      }
     } catch {
       setKeySaved(false);
     }
-  }, []);
+  }, [MASKED_VALUE]);
 
   const refreshGithubTokenStatus = useCallback(async () => {
     try {
       const { configured } = await api.settingsGithubToken.get();
       setGithubTokenSaved(configured);
+      if (configured) {
+        setGithubToken(MASKED_VALUE);
+      }
     } catch {
       setGithubTokenSaved(false);
     }
-  }, []);
+  }, [MASKED_VALUE]);
 
   useEffect(() => {
     refreshKeyStatus();
