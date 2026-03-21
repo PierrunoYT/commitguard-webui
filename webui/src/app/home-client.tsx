@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { api } from "@/lib/api";
+import { AnalysisRecord, historyStorage } from "@/lib/history-storage";
+import { HistoryManager } from "@/components/history-manager";
 
 const DEFAULT_MAX_DIFF_CHARS = 50000;
 const MAX_MAX_DIFF_CHARS = 200000;
@@ -90,6 +92,12 @@ interface ResultEntry {
   result: string;
   diff: string;
   truncated?: boolean;
+  repoPath?: string;
+  commitHash?: string;
+  commitMessage?: string;
+  author?: string;
+  date?: string;
+  model?: string;
 }
 
 function formatResultAsMarkdown(entry: ResultEntry): string {
@@ -261,6 +269,32 @@ export default function CommitGuardClient() {
     }
   }, []);
 
+  const saveToHistory = useCallback(async (entries: ResultEntry[]) => {
+    for (const entry of entries) {
+      if (!entry.commitHash) continue;
+      
+      const record: AnalysisRecord = {
+        id: entry.id,
+        timestamp: Date.now(),
+        repoPath: entry.repoPath || repoPath,
+        commitHash: entry.commitHash,
+        commitMessage: entry.commitMessage || "",
+        author: entry.author || "",
+        date: entry.date || "",
+        result: entry.result,
+        diff: entry.diff,
+        model: entry.model || model,
+        truncated: entry.truncated,
+      };
+      
+      try {
+        await historyStorage.save(record);
+      } catch (error) {
+        console.warn("Failed to save to history:", error);
+      }
+    }
+  }, [repoPath, model]);
+
   const showResults = useCallback((entries: Omit<ResultEntry, "id">[]) => {
     const withIds = entries.map((e) => ({
       ...e,
@@ -269,7 +303,10 @@ export default function CommitGuardClient() {
     setError("");
     setResults(withIds);
     if (withIds.length) setActiveResultId(withIds[0].id);
-  }, []);
+    
+    // Save to history
+    saveToHistory(withIds);
+  }, [saveToHistory]);
 
   const showError = useCallback((msg: string) => {
     setResults([]);
@@ -299,12 +336,18 @@ export default function CommitGuardClient() {
           result: item.result || "",
           diff: item.diff || "",
           truncated: item.diff_truncated === true,
+          repoPath: repoPath.trim() || ".",
+          commitHash: item.ref || item.short_ref || "",
+          commitMessage: item.title || "",
+          author: item.author || "",
+          date: item.date || "",
+          model: model,
         };
       });
       if (!entries.length) throw new Error(`No commits found in range "${range}".`);
       showResults(entries);
     },
-    [getRequestBody, showResults]
+    [getRequestBody, showResults, repoPath, model]
   );
 
   const analyzeRefList = useCallback(
@@ -318,11 +361,17 @@ export default function CommitGuardClient() {
           result: data.result || "",
           diff: data.diff || "",
           truncated: data.diff_truncated === true,
+          repoPath: repoPath.trim() || ".",
+          commitHash: data.short_ref || commitRef,
+          commitMessage: data.title || "",
+          author: data.author || "",
+          date: data.date || "",
+          model: model,
         });
       }
       showResults(entries);
     },
-    [getRequestBody, showResults]
+    [getRequestBody, showResults, repoPath, model]
   );
 
   const handleAnalyze = useCallback(async () => {
@@ -411,6 +460,12 @@ export default function CommitGuardClient() {
             result: data.result || "",
             diff: data.diff || "",
             truncated: data.diff_truncated === true,
+            repoPath: repoPath.trim() || ".",
+            commitHash: `pr-${data.pr_number}`,
+            commitMessage: data.pr_title || `PR #${data.pr_number}`,
+            author: "",
+            date: data.updated_at || "",
+            model: model,
           },
         ]);
       } catch (e) {
@@ -419,7 +474,7 @@ export default function CommitGuardClient() {
         setLoadingState(false);
       }
     },
-    [getRequestBody, setLoadingState, showError, showResults]
+    [getRequestBody, setLoadingState, showError, showResults, repoPath, model]
   );
 
   const handleCheckStaged = useCallback(async () => {
@@ -437,6 +492,12 @@ export default function CommitGuardClient() {
           result: data.result,
           diff: data.diff,
           truncated: data.diff_truncated === true,
+          repoPath: repoPath.trim() || ".",
+          commitHash: "staged",
+          commitMessage: "Staged changes",
+          author: "",
+          date: new Date().toISOString(),
+          model: model,
         },
       ]);
     } catch (e) {
@@ -444,7 +505,35 @@ export default function CommitGuardClient() {
     } finally {
       setLoadingState(false);
     }
-  }, [repoPath, getRequestBody, setLoadingState, showError, showResults]);
+  }, [repoPath, getRequestBody, setLoadingState, showError, showResults, model]);
+
+  const handleLoadHistoryRecord = useCallback((record: AnalysisRecord) => {
+    const entry: ResultEntry = {
+      id: `history-${record.id}`,
+      tabLabel: record.commitHash.slice(0, 7),
+      title: `${record.commitHash.slice(0, 7)} - ${record.commitMessage || "Commit"}`,
+      result: record.result,
+      diff: record.diff,
+      truncated: record.truncated,
+      repoPath: record.repoPath,
+      commitHash: record.commitHash,
+      commitMessage: record.commitMessage,
+      author: record.author,
+      date: record.date,
+      model: record.model,
+    };
+    
+    setResults(prev => {
+      // Check if already loaded
+      if (prev.some(r => r.id === entry.id)) {
+        setActiveResultId(entry.id);
+        return prev;
+      }
+      const newResults = [...prev, entry];
+      setActiveResultId(entry.id);
+      return newResults;
+    });
+  }, []);
 
   const handleLoadModels = useCallback(async () => {
     try {
@@ -593,7 +682,10 @@ export default function CommitGuardClient() {
       <header className="app-header">
         <div className="config-bar__group">
           <span className="config-bar__group-label-spacer" aria-hidden>&nbsp;</span>
-          <h1>CommitGuard</h1>
+          <div className="flex items-center gap-4">
+            <h1>CommitGuard</h1>
+            <HistoryManager onSelectRecord={handleLoadHistoryRecord} />
+          </div>
         </div>
         <div className="config-bar">
           <div className="config-bar__group">

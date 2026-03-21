@@ -36,13 +36,12 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    let result: string;
-    let diff: string;
+    let out: { result: string; diff: string; short_ref: string; title: string; author: string; date: string };
 
     if (isGithubUrl(repoPath)) {
       const token = resolveGithubToken(data.github_token as string);
       const [owner, repo] = parseGithubUrl(repoPath);
-      const out = await analyzeGithubCommit(
+      const ghOut = await analyzeGithubCommit(
         owner,
         repo,
         ref,
@@ -52,11 +51,17 @@ export async function POST(req: NextRequest) {
         maxDiffChars,
         systemPrompt
       );
-      result = out.result;
-      diff = out.diff;
+      out = {
+        result: ghOut.result,
+        diff: ghOut.diff,
+        short_ref: ghOut.short_ref || ref.slice(0, 8),
+        title: ghOut.title || "",
+        author: ghOut.author || "",
+        date: ghOut.date || "",
+      };
     } else {
       const resolvedPath = getRepoPath(repoPath);
-      const out = await analyzeCommit(
+      out = await analyzeCommit(
         resolvedPath,
         ref,
         apiKey,
@@ -64,20 +69,16 @@ export async function POST(req: NextRequest) {
         maxDiffChars,
         systemPrompt
       );
-      result = out.result;
-      diff = out.diff;
     }
 
+    const meta = { short_ref: out.short_ref, title: out.title, author: out.author, date: out.date };
+
     if (includeDiff) {
-      diff = redactDiff(diff);
-      const [truncated, truncatedFlag] = truncateDiffForUi(diff);
-      return Response.json({
-        result,
-        diff: truncated,
-        diff_truncated: truncatedFlag,
-      });
+      const redacted = redactDiff(out.diff);
+      const [truncated, truncatedFlag] = truncateDiffForUi(redacted);
+      return Response.json({ result: out.result, diff: truncated, diff_truncated: truncatedFlag, ...meta });
     }
-    return Response.json({ result, diff: "", diff_truncated: false });
+    return Response.json({ result: out.result, diff: "", diff_truncated: false, ...meta });
   } catch (e) {
     return handleAnalysisError(e);
   }

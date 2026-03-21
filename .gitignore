@@ -16,6 +16,8 @@ eggs/
 .eggs/
 lib/
 lib64/
+# Allow webui source lib directory (overrides `lib/` rule above)
+!webui/src/lib/
 parts/
 sdist/
 var/
