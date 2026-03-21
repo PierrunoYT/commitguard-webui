@@ -570,16 +570,22 @@ export default function CommitGuardClient() {
   const selectAllCommits = () => setSelectedRefs(new Set(commits.map((c) => c.ref)));
   const clearCommitSelection = () => setSelectedRefs(new Set());
 
+  const MASKED_VALUE = "••••••••";
+
   const handleSaveApiKey = useCallback(async () => {
     const key = apiKey.trim();
     if (!key) {
       showError("Enter API key first.");
       return;
     }
+    if (key === MASKED_VALUE) {
+      // Already saved, ignore
+      return;
+    }
     try {
       await api.settingsKey.save({ api_key: key });
       setKeySaved(true);
-      setApiKey("");
+      setApiKey(MASKED_VALUE);
       setResults([]);
     } catch (e) {
       showSafeError("Failed to save API key.", e);
@@ -603,10 +609,14 @@ export default function CommitGuardClient() {
       showError("Enter token first.");
       return;
     }
+    if (token === MASKED_VALUE) {
+      // Already saved, ignore
+      return;
+    }
     try {
       await api.settingsGithubToken.save({ github_token: token });
       setGithubTokenSaved(true);
-      setGithubToken("");
+      setGithubToken(MASKED_VALUE);
       setResults([]);
     } catch (e) {
       showSafeError("Failed to save GitHub token.", e);
@@ -697,6 +707,11 @@ export default function CommitGuardClient() {
                 placeholder="sk-or-..."
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
+                onFocus={() => {
+                  if (apiKey === MASKED_VALUE) {
+                    setApiKey("");
+                  }
+                }}
               />
               <span className={`key-status ${keySaved ? "saved" : "empty"}`} role="status" aria-live="polite">
                 <span aria-hidden>{keySaved ? "✓" : "○"}</span>
@@ -709,7 +724,18 @@ export default function CommitGuardClient() {
           <div className="config-bar__group">
             <label htmlFor="githubToken">GitHub</label>
             <div className="config-bar__input-row">
-              <input type="password" id="githubToken" placeholder="ghp_..." value={githubToken} onChange={(e) => setGithubToken(e.target.value)} />
+              <input 
+                type="password" 
+                id="githubToken" 
+                placeholder="ghp_..." 
+                value={githubToken} 
+                onChange={(e) => setGithubToken(e.target.value)} 
+                onFocus={() => {
+                  if (githubToken === MASKED_VALUE) {
+                    setGithubToken("");
+                  }
+                }}
+              />
               <span className={`key-status ${githubTokenSaved ? "saved" : "empty"}`} role="status" aria-live="polite">
                 <span aria-hidden>{githubTokenSaved ? "✓" : "○"}</span>
                 <span className="sr-only">{githubTokenSaved ? "GitHub token saved" : "GitHub token not saved"}</span>
