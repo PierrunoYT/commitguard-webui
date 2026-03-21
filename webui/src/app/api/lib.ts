@@ -11,6 +11,8 @@ import {
 import { GitHubError } from "@/lib/github-analyzer";
 import { redactDiff } from "@/lib/diff-redactor";
 
+const UI_DIFF_CHAR_LIMIT = 150_000;
+
 const DEFAULT_MODEL = "anthropic/claude-sonnet-4.5";
 
 // Legacy model IDs that need to be migrated
