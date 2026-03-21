@@ -148,6 +148,8 @@ export default function CommitGuardClient() {
   const nextResultId = useRef(0);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
 
+  const MASKED_VALUE = "********"; // 8 asterisks - ASCII only
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (modelDropdownOpen && modelDropdownRef.current && !modelDropdownRef.current.contains(e.target as Node)) {
@@ -203,7 +205,7 @@ export default function CommitGuardClient() {
     } catch {
       setKeySaved(false);
     }
-  }, [MASKED_VALUE]);
+  }, []);
 
   const refreshGithubTokenStatus = useCallback(async () => {
     try {
@@ -215,7 +217,7 @@ export default function CommitGuardClient() {
     } catch {
       setGithubTokenSaved(false);
     }
-  }, [MASKED_VALUE]);
+  }, []);
 
   useEffect(() => {
     refreshKeyStatus();
@@ -575,8 +577,6 @@ export default function CommitGuardClient() {
 
   const selectAllCommits = () => setSelectedRefs(new Set(commits.map((c) => c.ref)));
   const clearCommitSelection = () => setSelectedRefs(new Set());
-
-  const MASKED_VALUE = "********"; // 8 asterisks - ASCII only
 
   const handleSaveApiKey = useCallback(async () => {
     const key = apiKey.trim();
