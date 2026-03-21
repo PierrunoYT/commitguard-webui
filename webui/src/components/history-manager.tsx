@@ -16,9 +16,11 @@ export function HistoryManager({ onSelectRecord }: HistoryManagerProps) {
     isPersistent: boolean; 
     recordCount: number;
     canExport: boolean;
+    location?: string;
   } | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
+  const [isChangingStorage, setIsChangingStorage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -75,10 +77,23 @@ export function HistoryManager({ onSelectRecord }: HistoryManagerProps) {
     }
   };
 
+  const handleChangeStorage = async () => {
+    // Show confirmation since this affects where data is stored
+    const confirmChange = confirm(
+      "Changing storage will keep your existing history, but new analyses will be saved to the new location. Continue?"
+    );
+    if (!confirmChange) return;
+
+    // Show the setup modal in "changing" mode
+    setIsChangingStorage(true);
+    setShowSetup(true);
+  };
+
   const handleSetupStorage = async () => {
     const success = await historyStorage.selectFolder();
     if (success) {
       setShowSetup(false);
+      setIsChangingStorage(false);
       await loadStorageInfo();
       await loadRecords();
     }
@@ -184,12 +199,32 @@ export function HistoryManager({ onSelectRecord }: HistoryManagerProps) {
       {showSetup && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-lg font-semibold text-white mb-4">Setup Analysis History</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white">
+                {isChangingStorage ? "Change Storage Location" : "Setup Analysis History"}
+              </h2>
+              {isChangingStorage && (
+                <button
+                  onClick={() => {
+                    setShowSetup(false);
+                    setIsChangingStorage(false);
+                  }}
+                  className="p-1 hover:bg-gray-700 rounded transition-colors"
+                >
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
             
             <div className="space-y-4">
               <div className="bg-blue-900/30 border border-blue-700/50 rounded p-3">
                 <p className="text-sm text-blue-200">
-                  Choose where to store your analysis history:
+                  {isChangingStorage 
+                    ? "Choose a new location for storing future analyses:"
+                    : "Choose where to store your analysis history:"
+                  }
                 </p>
               </div>
 
@@ -206,6 +241,7 @@ export function HistoryManager({ onSelectRecord }: HistoryManagerProps) {
               <button
                 onClick={() => {
                   setShowSetup(false);
+                  setIsChangingStorage(false);
                   loadRecords();
                 }}
                 className="w-full px-4 py-3 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded text-left transition-colors"
@@ -232,13 +268,28 @@ export function HistoryManager({ onSelectRecord }: HistoryManagerProps) {
               <div className="flex items-center gap-3">
                 <h2 className="text-lg font-semibold text-white">Analysis History</h2>
                 {storageInfo && (
-                  <span className={`text-xs px-2 py-1 rounded ${
-                    storageInfo.isPersistent 
-                      ? "bg-green-900/50 text-green-400 border border-green-700/50" 
-                      : "bg-yellow-900/50 text-yellow-400 border border-yellow-700/50"
-                  }`}>
-                    {storageInfo.isPersistent ? "Persistent Storage" : "Browser Storage"}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span 
+                      className={`text-xs px-2 py-1 rounded ${
+                        storageInfo.isPersistent 
+                          ? "bg-green-900/50 text-green-400 border border-green-700/50" 
+                          : "bg-yellow-900/50 text-yellow-400 border border-yellow-700/50"
+                      }`}
+                      title={storageInfo.location ? `Stored in: ${storageInfo.location}` : undefined}
+                    >
+                      {storageInfo.isPersistent 
+                        ? (storageInfo.location ? `📁 ${storageInfo.location}` : "Persistent Storage")
+                        : "Browser Storage"
+                      }
+                    </span>
+                    <button
+                      onClick={handleChangeStorage}
+                      className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
+                      title="Change where analysis history is stored"
+                    >
+                      Change
+                    </button>
+                  </div>
                 )}
               </div>
               

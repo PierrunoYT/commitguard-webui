@@ -521,14 +521,22 @@ class FileSystemStorage {
     isPersistent: boolean; 
     recordCount: number;
     canExport: boolean;
+    location?: string;
   }> {
     const records = await this.getAll();
+    
+    let location: string | undefined;
+    if (this.useFileSystem && this.folderHandle) {
+      // Try to get the folder name
+      location = this.folderHandle.name;
+    }
     
     return {
       type: this.useFileSystem ? "filesystem" : "indexeddb",
       isPersistent: this.useFileSystem,
       recordCount: records.length,
       canExport: true,
+      location,
     };
   }
 
