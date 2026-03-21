@@ -43,17 +43,47 @@ For local repository analysis, the repository path is resolved relative to the s
 
 ## Configuration
 
+### OpenRouter API Key (Required)
+
 Get an API key at [openrouter.ai/keys](https://openrouter.ai/keys).
 
-**Option 1 – Save in the UI:** Enter your key in the web UI and click **Save**. It is stored in your user config directory:
+**Option 1 – Save in the UI (Recommended):**
+1. Open the web UI at http://localhost:3000
+2. Enter your API key in the "API Key" field at the top
+3. Click **Save**
+
+The key is stored securely in your user config directory:
 - **Linux/macOS:** `~/.config/commitguard-webui/api_key`
 - **Windows:** `%LOCALAPPDATA%\commitguard-webui\api_key`
+
+The field will show `********` when the key is saved. Click the field to enter a new key.
 
 **Option 2 – Environment variable:**
 
 ```bash
 export OPENROUTER_API_KEY=sk-or-...
 ```
+
+### GitHub Token (Optional)
+
+For analyzing private GitHub repositories or accessing PR data:
+1. Create a token at [github.com/settings/tokens](https://github.com/settings/tokens) (select `repo` scope)
+2. Enter the token in the "GitHub" field at the top of the UI
+3. Click **Save**
+
+The token is stored in the same config directory as the API key:
+- **Linux/macOS:** `~/.config/commitguard-webui/github_token`
+- **Windows:** `%LOCALAPPDATA%\commitguard-webui\github_token`
+
+### Analysis History Storage
+
+Analysis results can be saved for later review. Click the **History** button in the header.
+
+**Storage Options:**
+- **File System** (Chrome/Edge/Opera): Choose a folder on your computer. Data persists even if browser data is cleared. 
+- **Browser Storage** (All browsers): Data stored in IndexedDB. Will be lost if you clear browser data.
+
+You can change storage location anytime by clicking the **Change** button next to the storage badge in the History modal.
 
 ### Browser Compatibility
 
