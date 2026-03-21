@@ -867,10 +867,10 @@ export default function CommitGuardClient() {
                 />
               </div>
               <div className="button-row">
-                <button onClick={handleAnalyze} disabled={loading}>
+                <button onClick={handleAnalyze} disabled={!!loading}>
                   Analyze commit
                 </button>
-                <button type="button" className="secondary" onClick={handleAnalyzeRange} disabled={loading}>
+                <button type="button" className="secondary" onClick={handleAnalyzeRange} disabled={!!loading}>
                   Analyze range
                 </button>
               </div>
@@ -928,7 +928,7 @@ export default function CommitGuardClient() {
                   </button>
                   <button
                     onClick={handleAnalyzeSelected}
-                    disabled={loading || selectedRefs.size === 0}
+                    disabled={!!(loading || selectedRefs.size === 0)}
                   >
                     Analyze selected
                   </button>
@@ -1022,7 +1022,7 @@ export default function CommitGuardClient() {
               <div className="action-group">
                 <h3>Pre-commit Check</h3>
                 <p className="hint">Analyze staged changes before committing</p>
-                <button onClick={handleCheckStaged} disabled={loading}>
+                <button onClick={handleCheckStaged} disabled={!!loading}>
                   Check Staged
                 </button>
               </div>
@@ -1031,10 +1031,10 @@ export default function CommitGuardClient() {
               <h3>Output Tools</h3>
               <p className="hint">Quick actions for current analysis results</p>
               <div className="button-row">
-                <button type="button" className="secondary" onClick={handleCopyActiveResult} disabled={results.length === 0}>
+                <button type="button" className="secondary" onClick={handleCopyActiveResult} disabled={!!(results.length === 0)}>
                   Copy active result
                 </button>
-                <button type="button" className="secondary" onClick={handleExportAllResultsMarkdown} disabled={results.length === 0}>
+                <button type="button" className="secondary" onClick={handleExportAllResultsMarkdown} disabled={!!(results.length === 0)}>
                   Export all as .md
                 </button>
                 <button
@@ -1045,7 +1045,7 @@ export default function CommitGuardClient() {
                     setActiveResultId(null);
                     setError("");
                   }}
-                  disabled={results.length === 0 && !error}
+                  disabled={!!(results.length === 0 && !error)}
                 >
                   Clear output
                 </button>
