@@ -124,7 +124,7 @@ export default function CommitGuardClient() {
   const [githubToken, setGithubToken] = useState("");
   const [githubTokenSaved, setGithubTokenSaved] = useState(false);
   const [repoPath, setRepoPath] = useState("..");
-  const [model, setModel] = useState("anthropic/claude-sonnet-4-5-latest");
+  const [model, setModel] = useState("anthropic/claude-sonnet-4.5");
   const [modelDisplay, setModelDisplay] = useState("Claude Sonnet 4.5 (default)");
   const [models, setModels] = useState<Array<{ id: string; name?: string }>>([]);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
@@ -785,10 +785,10 @@ export default function CommitGuardClient() {
                   {models.length === 0 ? (
                     <div
                       className="custom-dropdown__option selected"
-                      data-value="anthropic/claude-sonnet-4-5-latest"
+                      data-value="anthropic/claude-sonnet-4.5"
                       role="option"
                       onClick={() => {
-                        setModel("anthropic/claude-sonnet-4-5-latest");
+                        setModel("anthropic/claude-sonnet-4.5");
                         setModelDisplay("Claude Sonnet 4.5 (default)");
                         setModelDropdownOpen(false);
                         setModelSearch("");
