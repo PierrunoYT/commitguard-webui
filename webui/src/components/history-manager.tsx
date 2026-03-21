@@ -23,6 +23,7 @@ export function HistoryManager({ onSelectRecord }: HistoryManagerProps) {
   const [showSetup, setShowSetup] = useState(false);
   const [isChangingStorage, setIsChangingStorage] = useState(false);
   const [isSelectingFolder, setIsSelectingFolder] = useState(false);
+  const [isFileSystemSupported, setIsFileSystemSupported] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const { ConfirmDialog, confirm } = useConfirmDialog();
@@ -30,6 +31,9 @@ export function HistoryManager({ onSelectRecord }: HistoryManagerProps) {
   // Initialize storage on mount
   useEffect(() => {
     const init = async () => {
+      // Check if file system API is supported
+      setIsFileSystemSupported(historyStorage.isFileSystemSupported());
+      
       const ready = await historyStorage.initialize();
       if (!ready) {
         setShowSetup(true);
@@ -269,27 +273,41 @@ export function HistoryManager({ onSelectRecord }: HistoryManagerProps) {
                     ? "Choose a new location for storing future analyses:"
                     : "Choose where to store your analysis history:"
                   }
+                  {!isFileSystemSupported && (
+                    <span className="block mt-2 text-yellow-300">
+                      Note: File System Access API is not available in your browser. Browser Storage is recommended for Firefox/Safari users.
+                    </span>
+                  )}
                 </p>
               </div>
 
               <button
                 onClick={handleSetupStorage}
-                disabled={isSelectingFolder}
-                className="w-full px-4 py-3 bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded text-left transition-colors"
+                disabled={isSelectingFolder || !isFileSystemSupported}
+                className={`w-full px-4 py-3 rounded text-left transition-colors ${
+                  isFileSystemSupported
+                    ? "bg-green-600 hover:bg-green-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    : "bg-gray-800 text-gray-500 cursor-not-allowed"
+                }`}
               >
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">Save to File System (Recommended)</span>
+                  <span className="font-medium">Save to File System {isFileSystemSupported && "(Recommended)"}</span>
                   {isSelectingFolder && (
                     <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                   )}
+                  {!isFileSystemSupported && (
+                    <span className="text-xs bg-gray-700 px-2 py-0.5 rounded">Not Available</span>
+                  )}
                 </div>
-                <div className="text-sm text-green-100 mt-1">
+                <div className={`text-sm mt-1 ${isFileSystemSupported ? "text-green-100" : "text-gray-500"}`}>
                   {isSelectingFolder 
                     ? "Opening folder picker..." 
-                    : "Choose a folder on your computer. Data persists even if browser data is cleared."
+                    : isFileSystemSupported
+                      ? "Choose a folder on your computer. Data persists even if browser data is cleared."
+                      : "Your browser doesn't support File System Access API. Use Chrome, Edge, or Opera for this feature."
                   }
                 </div>
               </button>

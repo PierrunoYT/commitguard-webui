@@ -39,6 +39,11 @@ class FileSystemStorage {
     this.useFileSystem = typeof window !== "undefined" && "showDirectoryPicker" in window;
   }
 
+  // Check if File System Access API is supported by the browser
+  isFileSystemSupported(): boolean {
+    return this.useFileSystem;
+  }
+
   // Initialize storage - request permission if using File System Access API
   async initialize(): Promise<boolean> {
     if (this.useFileSystem) {
