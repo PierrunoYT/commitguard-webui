@@ -12,6 +12,10 @@ AI-powered web interface that analyzes Git commits for bugs, security issues, an
 - **Pre-commit check** – Review staged changes before committing
 - **GitHub support** – Analyze commits and PRs from GitHub URLs (no local clone needed)
 - **Multi-model** – Use any model on OpenRouter (GPT-4, Claude, Gemini, etc.)
+- **Analysis history** – Persist analysis results to file system (Chrome/Edge/Opera) or browser storage
+- **Export results** – Export history to JSON for backup or sharing
+- **Custom prompts** – Configure system prompts for different analysis styles
+- **Masked API keys** – Secure input fields with visual feedback when keys are saved
 - **Next.js** – Full-stack Next.js app (no separate backend)
 
 ## Requirements
@@ -50,6 +54,11 @@ Get an API key at [openrouter.ai/keys](https://openrouter.ai/keys).
 ```bash
 export OPENROUTER_API_KEY=sk-or-...
 ```
+
+### Browser Compatibility
+
+**File System Storage** (for analysis history): Chrome, Edge, Opera  
+**Browser Storage** (fallback): All modern browsers (Firefox, Safari, Chrome, Edge)
 
 ## License
 

@@ -18,10 +18,11 @@ This document tracks potential features that could enhance the CommitGuard Web U
 ## User Experience
 
 ### High Priority
-- [ ] **Analysis History & Persistence**
+- [x] **Analysis History & Persistence** ✅
   - Save analysis results to local storage or database
   - Browse previous analyses with timestamps
   - Re-run previous analyses to compare results
+  - Export/Import history as JSON
 
 - [ ] **Dark/Light Theme Toggle**
   - Currently only has dark theme
@@ -146,7 +147,7 @@ This document tracks potential features that could enhance the CommitGuard Web U
 ## Export & Reporting
 
 ### High Priority
-- [ ] **Export Analysis Results**
+- [x] **Export Analysis Results** ✅
   - JSON export for programmatic use
   - Markdown export for documentation
   - PDF export for reports
@@ -296,8 +297,8 @@ This document tracks potential features that could enhance the CommitGuard Web U
 ## Priority Summary
 
 ### Must Have (Core Experience)
-1. Analysis history & persistence
-2. Export results (JSON, Markdown, PDF)
+1. ~~Analysis history & persistence~~ ✅ Implemented
+2. ~~Export results (JSON, Markdown, PDF)~~ ✅ Partially implemented (JSON, Markdown)
 3. Keyboard shortcuts
 4. Analysis templates/presets
 5. Theme toggle
