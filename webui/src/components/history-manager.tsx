@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnalysisRecord, historyStorage } from "@/lib/history-storage";
+import { useConfirmDialog } from "./confirm-dialog";
 
 interface HistoryManagerProps {
   onSelectRecord: (record: AnalysisRecord) => void;
@@ -23,6 +24,7 @@ export function HistoryManager({ onSelectRecord }: HistoryManagerProps) {
   const [isChangingStorage, setIsChangingStorage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const { ConfirmDialog, confirm } = useConfirmDialog();
 
   // Initialize storage on mount
   useEffect(() => {
@@ -79,9 +81,12 @@ export function HistoryManager({ onSelectRecord }: HistoryManagerProps) {
 
   const handleChangeStorage = async () => {
     // Show confirmation since this affects where data is stored
-    const confirmChange = confirm(
-      "Changing storage will keep your existing history, but new analyses will be saved to the new location. Continue?"
-    );
+    const confirmChange = await confirm({
+      title: "Change Storage Location",
+      message: "Changing storage will keep your existing history, but new analyses will be saved to the new location. Continue?",
+      confirmText: "Change",
+      cancelText: "Keep Current",
+    });
     if (!confirmChange) return;
 
     // Show the setup modal in "changing" mode
@@ -141,7 +146,14 @@ export function HistoryManager({ onSelectRecord }: HistoryManagerProps) {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this analysis?")) return;
+    const confirmed = await confirm({
+      title: "Delete Analysis",
+      message: "Are you sure you want to delete this analysis? This action cannot be undone.",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      isDanger: true,
+    });
+    if (!confirmed) return;
     
     const success = await historyStorage.delete(id);
     if (success) {
@@ -152,7 +164,14 @@ export function HistoryManager({ onSelectRecord }: HistoryManagerProps) {
   };
 
   const handleClearAll = async () => {
-    if (!confirm("Are you sure you want to delete ALL analysis history? This cannot be undone.")) return;
+    const confirmed = await confirm({
+      title: "Clear All History",
+      message: "Are you sure you want to delete ALL analysis history? This action cannot be undone and will remove all stored analyses.",
+      confirmText: "Clear All",
+      cancelText: "Keep History",
+      isDanger: true,
+    });
+    if (!confirmed) return;
     
     const success = await historyStorage.clearAll();
     if (success) {
@@ -461,6 +480,9 @@ export function HistoryManager({ onSelectRecord }: HistoryManagerProps) {
           </div>
         </div>
       )}
+
+      {/* Custom Confirmation Dialog */}
+      <ConfirmDialog />
     </>
   );
 }
